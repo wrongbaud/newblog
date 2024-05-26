@@ -1,6 +1,5 @@
 AUTHOR = 'VoidStar Security'
 SITENAME = 'VoidStar Security Blog'
-#SITEURL=''
 SITEURL = 'https://wrongbaud.github.io/newblog/'
 PLUGIN_PATHS = ['/home/wrongbaud/projects/vss/blog-resources/pelican-plugins']
 PLUGINS = ['i18n_subsites','pelican_just_table','tag_cloud']
@@ -22,19 +21,16 @@ LINKS = (('VoidStar Security Website', 'https://voidstarsec.com/'),
          ('Wrongbauds Blog (fun intro hacks)', 'https://www.wrongbaud.github.io/'),)
 
 # Social widget
-SOCIAL = (('twitter', 'https://twitter.com/voidstarsec'),
+SOCIAL = ( ('VSS website','https://voidstarsec.com'),
+          ('twitter', 'https://twitter.com/voidstarsec'),
           ('linkedin', 'https://www.linkedin.com/in/voidstarsec'),
           ('github', 'https://github.com/voidstarsec'),)
 
 #SITELOGO = './logo.png'
 #SITELOGO_SIZE=70
-ARCHIVES_SAVE_AS=True
+DISPLAY_BREADCRUMBS=True
 DEFAULT_PAGINATION=10
 DISPLAY_CATEGORIES_ON_MENU=False
-DISPLAY_TAGS_INLINE=True
-TAGS_URL='./tags.html'
-DISPLAY_TAGS_ON_SIDEBAR=True
-DISABLE_SIDEBAR_TITLE_ICONS=False
 DISPLAY_CATEGORIES_ON_SIDEBAR=True
 DISPLAY_ARTICLE_INFO_ON_INDEX=True
 SHOW_ARTICLE_AUTHOR=True
