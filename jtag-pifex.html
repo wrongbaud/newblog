@@ -173,7 +173,7 @@ VoidStar Security Blog            </a>
 <p>So, we've talked about our new hardware tooling. How about a demonstration of it in action? Let's start with a low-cost SSD purchased on AliExpress. </p>
 <p><img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/top_pcb_labelled.jpg"></p>
 <p>If we break down the hardware, we have the following:</p>
-<table class="table table-striped">
+<table class="table table-hover">
 <thead>
 <tr>
 <th>Component</th>
@@ -215,7 +215,7 @@ VoidStar Security Blog            </a>
 <li><strong>Side Note:</strong> When reversing a new target, I like to place the target platform on top of a blank sheet of paper; that way, I can quickly write down notes as I am probing/reverse engineering without having to turn away from the workspace. You can see this in the video below:</li>
 </ul>
 <p><img alt="UART Startup Voltages" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/measurement.gif" style="display:block; margin-left:auto; margin-right:auto"></p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th>Pin</th>
@@ -281,7 +281,7 @@ VoidStar Security Blog            </a>
 <p><img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/digital_drops.png"></p>
 <p>Looking closely at the images above, you may notice that image 1 has a slightly different shape when it rises and falls than the other lines. This is likely due to a capacitor being present somewhere on this line, which makes it a good candidate for VCC. This was pin two on the debug header, so we can now update our table as shown below.</p>
 <p><img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/analog_drops.png"></p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th>Pin</th>
@@ -399,7 +399,7 @@ FOUND!<span class="w"> </span>TCK:pin10<span class="w"> </span>TMS:pin14<span cl
 </code></pre></div>
 
 <p>Going back to our table of pin usages, we now know the following:</p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th>Pin</th>
