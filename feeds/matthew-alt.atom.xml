@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom"><title>VoidStar Security Blog - "Matthew Alt"</title><link href="/" rel="alternate"></link><link href="/feeds/matthew-alt.atom.xml" rel="self"></link><id>/</id><updated>2024-05-05T00:00:00-06:00</updated><entry><title>"JTAG Hacking with a Raspberry Pi - Introducing the PiFex"</title><link href="/jtag-pifex.html" rel="alternate"></link><published>2024-05-05T00:00:00-06:00</published><updated>2024-05-05T00:00:00-06:00</updated><author><name>"Matthew Alt"</name></author><id>tag:None,2024-05-05:/jtag-pifex.html</id><summary type="html">&lt;p&gt;With this blog post, we'll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU.&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Overview&lt;/h1&gt;
+&lt;p&gt;When performing initial hardware analysis and recon, I have become very fond of using Armbian-based single-board computers (SBCs) for things like UART, SPI, I2C, JTAG, and SWD. One of the main benefits of using one of these boards is that since the peripherals we are interested in are exposed as character devices in Linux, a wide variety of tools are available for interfacing with them, including most programming and scripting languages. &lt;/p&gt;
+&lt;p&gt;However, one of the biggest hurdles that stop people from using an Armbian-based device is the initial setup and configuration (not to mention availability!). It takes more time to configure an Orange Pi or Raspberry Pi and enable the various interfaces than plug in an FTDI to your Linux machine. This blog post will help break down some of those barriers and streamline the setup process for those looking to learn hardware hacking with a Linux SBC.&lt;/p&gt;
+&lt;p&gt;With this blog post, we'll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; The design and software for the PiFex will be open-sourced in the coming months as we continue our final rounds of testing&lt;/p&gt;
+&lt;h2&gt;Background Information&lt;/h2&gt;
+&lt;p&gt;If you are unfamiliar with JTAG at a low level, you might want to read my &lt;a href="https://wrongbaud.github.io/posts/jtag-hdd/"&gt;previous&lt;/a&gt; blog post about reverse engineering JTAG taps. &lt;/p&gt;
+&lt;h1&gt;PiFex: An Overview&lt;/h1&gt;
+&lt;p&gt;The Pi Interface Explorer or PiFex, is a simple hat for a Raspberry Pi designed for tinkerers and hardware hackers alike. By breaking out the commonly used interfaces and routing them through bi-directional level shifters, we aimed to streamline some of the initial steps when reverse engineering a new device or trying to learn how a new sensor works. While this device was initially designed for use during our &lt;a href="https://voidstarsec.com/hhb.html"&gt;hardware hacking bootcamp&lt;/a&gt; it has quickly become my go-to when performing initial hardware assessments of COTS devices.&lt;/p&gt;
+&lt;p&gt;The PCB is well documented, and the IO pins are all labeled as shown in the image below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Pifex Overview" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/pifex.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;We also have added an I2C OLED screen, which you can customize using the Adafruit CircuitPython libraries:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="JTAG ID Clipped " src="https://voidstarsec.com/blog/assets/images/jtag-pifex/jtag_id_clipped.jpg"&gt;&lt;/p&gt;
+&lt;h1&gt;PiFex: Hardware&lt;/h1&gt;
+&lt;p&gt;The PiFex exposes the following interfaces to the end user:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;UART via &lt;code&gt;IO14&lt;/code&gt; and &lt;code&gt;IO15&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;SPI via &lt;code&gt;IO8&lt;/code&gt;, &lt;code&gt;IO9&lt;/code&gt;, &lt;code&gt;IO10&lt;/code&gt; and &lt;code&gt;IO11&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;I2C via &lt;code&gt;IO2&lt;/code&gt; and &lt;code&gt;IO3&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;JTAG via &lt;code&gt;IO2&lt;/code&gt;,&lt;code&gt;IO3&lt;/code&gt;,&lt;code&gt;IO14&lt;/code&gt; and &lt;code&gt;IO15&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;SWD via &lt;code&gt;IO9&lt;/code&gt; and &lt;code&gt;IO11&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;There are also an additional eight GPIO pins. These interfaces were chosen because they are the ones that we utilize in our hardware hacking training and are also the most likely to be used by tinkerers and hardware hackers for other projects. &lt;/p&gt;
+&lt;h2&gt;Logic Analyzer Connector&lt;/h2&gt;
+&lt;p&gt;When reverse engineering a target device or inspecting why your custom code controlling a specific peripheral isn't working, a logic analyzer is your best friend. To help simplify the wiring for both our training and standard usage, we also added a logic analyzer connector. This was done to remediate potential wiring issues and make debugging and troubleshooting as easy as possible. An interface board was designed to connect to entry-level logic analyzers that can be seen in the image below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/la_connector.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/la_1.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/la_2.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;This helps streamline connecting a logic analyzer to the PiFex and analyzing the transmitted or monitored signals. &lt;/p&gt;
+&lt;h2&gt;Level Shifter(s)&lt;/h2&gt;
+&lt;p&gt;The Raspberry PI uses 3.3V logic levels, meaning it can only communicate with devices that use that same logic level. If we want to connect to a device that uses lower voltages (1.8V and 1.2V are becoming increasingly common), we need to route those through a level shifter. To streamline this and help reduce issues with wiring during our training, we've added two onboard level shifters.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/level_shifters.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;We chose to use the &lt;a href="https://www.ti.com/product/TXB0108"&gt;TXB0108 Bi-Directional level shifters&lt;/a&gt;; these allow us to communicate with devices at a voltage below 3.3V. In the case where a different logic level is needed, the user can select whether to use an external voltage source for the input voltage using the &lt;code&gt;VCCA_IN&lt;/code&gt; line on the exposed headers. The level shifter then references this voltage by toggling the selector switch at the top of the board to &lt;code&gt;VCCA_IN&lt;/code&gt; as opposed to the default state, which is &lt;code&gt;3.3V&lt;/code&gt;.&lt;/p&gt;
+&lt;h1&gt;PiFex: Software&lt;/h1&gt;
+&lt;p&gt;If you've ever had to set up a headless Raspberry Pi before, you know that it's not always a simple task, and when performing remote training, we can't assume that everyone will be able to manually configure their Pi to connect to their network. This is why we designed the PiFex image to use a USB-Ethernet gadget on startup to present an Ethernet device to the end user over USB. This results in an easy, predictable way to connect to the Pi. After plugging the Pi into their machine, all the user needs to do is set the IP address, and they are all set. A short video walking through the web interface can be seen below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="UART Startup Voltages" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/multi.gif" style="display:block; margin-left:auto; margin-right:auto"&gt;&lt;/p&gt;
+&lt;p&gt;As mentioned in the previous section, one of the initial hurdles when learning about embedded protocols is selecting what tool or interface you want to learn with. Embedded development boards like the Arduino series or STM32 series are great but require setting up a development environment and understanding the specifics of the target microcontroller. One of the benefits of using an embedded Linux board is that these interfaces are exposed via &lt;code&gt;/dev/&lt;/code&gt; and can be accessed using many programming languages such as Python, Rust, C, and even bash. &lt;/p&gt;
+&lt;h2&gt;Jupyter Notebooks&lt;/h2&gt;
+&lt;p&gt;Throughout our training, we utilize Jupyter Notebooks to help streamline the process and provide students with template notebooks for future assessments. For example, the JTAG notebook contains instructions and tooling to perform:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;JTAG Scan Chain Detection via &lt;code&gt;go-jtagenum&lt;/code&gt;&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Example UrJTAG Python Bindings for low-level scan chain access&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Example OpenOCD configurations and Python bindings for scripting JTAG operations&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Screenshots of the included notebooks can be seen below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/jtag-notebook-2.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/jtag.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/notebook-1.png"&gt;&lt;/p&gt;
+&lt;p&gt;While in class, we will use all of these features on our target, and students will be able to copy this notebook and use the same tools and techniques for future targets. &lt;/p&gt;
+&lt;p&gt;Last but certainly not least, we've configured the PiFex image to allow access to standard tools such as SSH and FTP. Now that we've reviewed the PiFex's features and intended use case, let's reverse-engineer the JTAG TAP for an undocumented target!&lt;/p&gt;
+&lt;h1&gt;PiFex Demo 1 : JTAG&lt;/h1&gt;
+&lt;p&gt;So, we've talked about our new hardware tooling. How about a demonstration of it in action? Let's start with a low-cost SSD purchased on AliExpress. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/top_pcb_labelled.jpg"&gt;&lt;/p&gt;
+&lt;p&gt;If we break down the hardware, we have the following:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Component&lt;/th&gt;
+&lt;th&gt;Part Number&lt;/th&gt;
+&lt;th&gt;Datasheet / Information&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;SM2259XT&lt;/td&gt;
+&lt;td&gt;&lt;a href="https://www.siliconmotion.com/download/q/a/SM2259_XT_PB_EN_201910.pdf"&gt;Advertisement / Basic Information&lt;/a&gt;&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;SPS64472LBTH2&lt;/td&gt;
+&lt;td&gt;NA - 64GB NAND Flash&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;50.00 MHz&lt;/td&gt;
+&lt;td&gt;Oscilator&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;NA&lt;/td&gt;
+&lt;td&gt;10 pin debug header&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;After searching for datasheets, we were not able to locate much; however, next, we will investigate the mystery header at the end of the board. Let's start by looking at this debug connector at the end of the drive. First, we will attempt to identify the ground connection. To do this, we will use our multimeter in continuity mode and test against a known ground. We will use the large copper fills to connect the SSD to an adapter board in this case. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/known_ground.jpg"&gt;&lt;/p&gt;
+&lt;p&gt;After performing this test, we determined that the following pin was ground.
+&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/known_ground_2.jpg"&gt;&lt;/p&gt;
+&lt;p&gt;Now we need to determine what logic levels are in use; remember that the Pi uses a 3.3V logic level by default, so if there are other levels in use, we will need to locate a reference voltage for the level shifter. We will use the following pinout of the SSD for reference:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/connector_pins.jpg"&gt;&lt;/p&gt;
+&lt;p&gt;After measuring the voltages on the connector, we saw the following voltages. &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Side Note:&lt;/strong&gt; When reversing a new target, I like to place the target platform on top of a blank sheet of paper; that way, I can quickly write down notes as I am probing/reverse engineering without having to turn away from the workspace. You can see this in the video below:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;img alt="UART Startup Voltages" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/measurement.gif" style="display:block; margin-left:auto; margin-right:auto"&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Pin&lt;/th&gt;
+&lt;th&gt;Voltage&lt;/th&gt;
+&lt;th&gt;Usage&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;0V&lt;/td&gt;
+&lt;td&gt;GND&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;3.173V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;0.02V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;7&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;8&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;It is extremely common for voltage sources to have capacitors connected to them called decoupling capacitors. These capacitors help stabilize the power supply in the event of voltage fluctuations. From here, there are two approaches that we can take to finding out which pins &lt;strong&gt;might&lt;/strong&gt; be VCC on our SSD.&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;
+&lt;p&gt;Note what pins are connected to large capacitors near the connector&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;
+&lt;p&gt;Monitor the voltage source on power up / power down&lt;/p&gt;
+&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Based on the voltages we collected, we should monitor pins 2,3,4,6,7, and \8 with the oscilloscope and see how they differ. Take a look at the images below and see if you can spot the different one:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/all_drops.png"&gt;&lt;/p&gt;
+&lt;p&gt;If we examine the images highlighted in green below, we see a relatively sharp drop from high to low:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/digital_drops.png"&gt;&lt;/p&gt;
+&lt;p&gt;Looking closely at the images above, you may notice that image 1 has a slightly different shape when it rises and falls than the other lines. This is likely due to a capacitor being present somewhere on this line, which makes it a good candidate for VCC. This was pin two on the debug header, so we can now update our table as shown below.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/analog_drops.png"&gt;&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Pin&lt;/th&gt;
+&lt;th&gt;Voltage&lt;/th&gt;
+&lt;th&gt;Usage&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;0V&lt;/td&gt;
+&lt;td&gt;GND&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;VCC&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;3.173V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;0.02V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;7&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;8&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;We will connect to the SSD using the clips shown in the image below, these were also purchased on AliExpress.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/clip-only.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/connected.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;With this assumption, we are left with six unknown pins. Next, we can perform a JTAG IDCODE scan using the &lt;code&gt;go-jtagenum&lt;/code&gt; tools; this will attempt to brute force all of the possible JTAG pin combinations and will report back pin configurations that report a valid ID code or pass the bypass test. If you're unfamiliar with these scans and want to learn more about them, check out my old writeup &lt;a href="https://wrongbaud.github.io/posts/jtag-hdd/"&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pi@voidstar:~/go/bin/linux_arm&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;./go-jtagenum&lt;span class="w"&gt; &lt;/span&gt;-pins&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;{ &amp;quot;pin2&amp;quot;: 2, &amp;quot;pin3&amp;quot;: 3, &amp;quot;pin14&amp;quot;: 14, &amp;quot;pin15&amp;quot;: 15, &amp;quot;pin10&amp;quot;: 10, &amp;quot;pin9&amp;quot;: 9}&amp;#39;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-command&lt;span class="w"&gt; &lt;/span&gt;scan_idcode&lt;span class="w"&gt; &lt;/span&gt;-delay-tck&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;50&lt;/span&gt;
+defined&lt;span class="w"&gt; &lt;/span&gt;pins:&lt;span class="w"&gt; &lt;/span&gt;map&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;:pin2&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;3&lt;/span&gt;:pin3&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;9&lt;/span&gt;:pin9&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt;:pin10&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;14&lt;/span&gt;:pin14&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;15&lt;/span&gt;:pin15&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="o"&gt;================================&lt;/span&gt;
+Starting&lt;span class="w"&gt; &lt;/span&gt;scan&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;IDCODE...
+FOUND!&lt;span class="w"&gt; &lt;/span&gt;TCK:pin10&lt;span class="w"&gt; &lt;/span&gt;TMS:pin3&lt;span class="w"&gt; &lt;/span&gt;TDO:pin2
+&lt;span class="w"&gt;     &lt;/span&gt;devices:
+&lt;span class="w"&gt;        &lt;/span&gt;0x459dd1e7&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x0f3&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Digital&lt;span class="w"&gt; &lt;/span&gt;Microwave&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x59dd,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x4&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xb83b3f6f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x7b7&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x83b3,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xb&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x268b37a3&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x3d1&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Accelerated&lt;span class="w"&gt; &lt;/span&gt;Memory&lt;span class="w"&gt; &lt;/span&gt;Production&lt;span class="w"&gt; &lt;/span&gt;Inc.&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x68b3,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x2&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x5f5fcedf&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x76f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xf5fc,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x5&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xf79d3aeb&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x575&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x79d3,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xf&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x72ba6a4f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x527&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x2ba6,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x7&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x7bf1f75d&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x3ae&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Korea&lt;span class="w"&gt; &lt;/span&gt;Uhbele&lt;span class="w"&gt; &lt;/span&gt;International&lt;span class="w"&gt; &lt;/span&gt;Group&lt;span class="w"&gt; &lt;/span&gt;Ltd.&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xbf1f,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x7&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xe7cfffaf&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x7d7&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x7cff,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xe&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xb0cf6bbf&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x5df&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x0cf6,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xb&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xebbfb71f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x38f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Ericsson&lt;span class="w"&gt; &lt;/span&gt;Modems&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xbbfb,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xe&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xd6f7fc17&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x60b&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x6f7f,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xd&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xedfe967b&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x33d&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;AIM&lt;span class="w"&gt; &lt;/span&gt;Corporation&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xdfe9,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xe&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xfeefd88d&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x446&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xeefd,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xf&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x8ef5b7ff&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x3ff&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xef5b,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x8&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x2fdc8f9f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x7cf&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xfdc8,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x2&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x7ce9726b&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x135&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;API&lt;span class="w"&gt; &lt;/span&gt;NetWorks&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xce97,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x7&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x7ff76d77&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x6bb&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xff76,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x7&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xb9f58fdb&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x7ed&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x9f58,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xb&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xe36f2bb7&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x5db&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x36f2,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xe&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x757fbbdb&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x5ed&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x57fb,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x7&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x4fbeae5f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x72f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xfbea,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x4&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0xddf6f17f&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x0bf&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Broadcom&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xdf6f,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0xd&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;0x1f3cefbd&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x7de&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;invalid&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0xf3ce,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x1&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;     &lt;/span&gt;possible&lt;span class="w"&gt; &lt;/span&gt;nTRST:&lt;span class="w"&gt; &lt;/span&gt;pin9,&lt;span class="w"&gt; &lt;/span&gt;pin14&lt;span class="w"&gt; &lt;/span&gt;pin15&lt;span class="w"&gt; &lt;/span&gt;
+FOUND!&lt;span class="w"&gt; &lt;/span&gt;TCK:pin10&lt;span class="w"&gt; &lt;/span&gt;TMS:pin14&lt;span class="w"&gt; &lt;/span&gt;TDO:pin15
+&lt;span class="w"&gt;     &lt;/span&gt;devices:
+&lt;span class="w"&gt;        &lt;/span&gt;0x100434b1&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x258&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Lorom&lt;span class="w"&gt; &lt;/span&gt;Industrial&lt;span class="w"&gt; &lt;/span&gt;Co.&lt;span class="w"&gt; &lt;/span&gt;Ltd.&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x0043,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x1&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;     &lt;/span&gt;possible&lt;span class="w"&gt; &lt;/span&gt;nTRST:&lt;span class="w"&gt; &lt;/span&gt;pin9&lt;span class="w"&gt; &lt;/span&gt;pin2&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;pin3&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;
+&lt;span class="o"&gt;================================&lt;/span&gt;
+pi@voidstar:~/go/bin/linux_arm&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;./go-jtagenum&lt;span class="w"&gt; &lt;/span&gt;-pins&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;{ &amp;quot;pin2&amp;quot;: 2, &amp;quot;pin3&amp;quot;: 3, &amp;quot;pin14&amp;quot;: 14, &amp;quot;pin15&amp;quot;: 15, &amp;quot;pin10&amp;quot;: 10, &amp;quot;pin9&amp;quot;: 9}&amp;#39;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-command&lt;span class="w"&gt; &lt;/span&gt;scan_bypass&lt;span class="w"&gt; &lt;/span&gt;-delay-tck&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;50&lt;/span&gt;
+defined&lt;span class="w"&gt; &lt;/span&gt;pins:&lt;span class="w"&gt; &lt;/span&gt;map&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;:pin2&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;3&lt;/span&gt;:pin3&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;9&lt;/span&gt;:pin9&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt;:pin10&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;14&lt;/span&gt;:pin14&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;15&lt;/span&gt;:pin15&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="o"&gt;================================&lt;/span&gt;
+Starting&lt;span class="w"&gt; &lt;/span&gt;scan&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pattern&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;0110011101001101101000010111001001&lt;/span&gt;
+FOUND!&lt;span class="w"&gt; &lt;/span&gt;TCK:pin10&lt;span class="w"&gt; &lt;/span&gt;TMS:pin14&lt;span class="w"&gt; &lt;/span&gt;TDO:pin15&lt;span class="w"&gt; &lt;/span&gt;TDI:pin9,&lt;span class="w"&gt; &lt;/span&gt;possible&lt;span class="w"&gt; &lt;/span&gt;nTRST:&lt;span class="w"&gt; &lt;/span&gt;pin2&lt;span class="w"&gt; &lt;/span&gt;pin3&lt;span class="w"&gt; &lt;/span&gt;
+^C
+pi@voidstar:~/go/bin/linux_arm&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;./go-jtagenum&lt;span class="w"&gt; &lt;/span&gt;-pins&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;{ &amp;quot;pin2&amp;quot;: 2, &amp;quot;pin3&amp;quot;: 3, &amp;quot;pin14&amp;quot;: 14, &amp;quot;pin15&amp;quot;: 15, &amp;quot;pin10&amp;quot;: 10, &amp;quot;pin9&amp;quot;: 9}&amp;#39;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;-command&lt;span class="w"&gt; &lt;/span&gt;scan_idcode&lt;span class="w"&gt; &lt;/span&gt;-delay-tck&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;50&lt;/span&gt;
+defined&lt;span class="w"&gt; &lt;/span&gt;pins:&lt;span class="w"&gt; &lt;/span&gt;map&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="m"&gt;2&lt;/span&gt;:pin2&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;3&lt;/span&gt;:pin3&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;9&lt;/span&gt;:pin9&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;10&lt;/span&gt;:pin10&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;14&lt;/span&gt;:pin14&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;15&lt;/span&gt;:pin15&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;span class="o"&gt;================================&lt;/span&gt;
+Starting&lt;span class="w"&gt; &lt;/span&gt;scan&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;IDCODE...
+FOUND!&lt;span class="w"&gt; &lt;/span&gt;TCK:pin10&lt;span class="w"&gt; &lt;/span&gt;TMS:pin14&lt;span class="w"&gt; &lt;/span&gt;TDO:pin15
+&lt;span class="w"&gt;     &lt;/span&gt;devices:
+&lt;span class="w"&gt;        &lt;/span&gt;0x100434b1&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x258&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;Lorom&lt;span class="w"&gt; &lt;/span&gt;Industrial&lt;span class="w"&gt; &lt;/span&gt;Co.&lt;span class="w"&gt; &lt;/span&gt;Ltd.&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x0043,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x1&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;     &lt;/span&gt;possible&lt;span class="w"&gt; &lt;/span&gt;nTRST:&lt;span class="w"&gt; &lt;/span&gt;pin2&lt;span class="w"&gt; &lt;/span&gt;pin3&lt;span class="w"&gt; &lt;/span&gt;pin9&lt;span class="w"&gt; &lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Before we move forward, let's talk about the output that we're seeing above. You'll notice that &lt;code&gt;go-jtagenum&lt;/code&gt; discovered what it believes to be multiple possible pin mappings, some of which contain more "devices" than others. While it is possible that there &lt;strong&gt;can&lt;/strong&gt; be various devices on a JTAG scan chain, we know that this device is pretty straightforward and will not likely have 10+ devices. This is the one drawback of the &lt;code&gt;IDCODE&lt;/code&gt; scan; it simply checks to see if data is changing** on the assumed &lt;code&gt;TDO&lt;/code&gt; port, which can lead to many false positives. However, the entry displaying just one &lt;code&gt;IDCODE&lt;/code&gt; value looks promising; we can further investigate this TAP using the &lt;code&gt;BYPASS&lt;/code&gt; scan.&lt;/p&gt;
+&lt;p&gt;We can attempt to verify these results with a bypass scan. The &lt;code&gt;BYPASS&lt;/code&gt; scan attempts to leverage the &lt;code&gt;BYPASS&lt;/code&gt; instruction of the JTAG TAP which directly links the &lt;code&gt;TDI&lt;/code&gt; and &lt;code&gt;TDO&lt;/code&gt; lines. The scan attempts to enter the &lt;code&gt;BYPASS&lt;/code&gt; instruction, provides a unique bit pattern on &lt;code&gt;TDI&lt;/code&gt;, and monitors for that same pattern on &lt;code&gt;TDO&lt;/code&gt;. If the data sent on &lt;code&gt;TDI&lt;/code&gt; matches what is read on &lt;code&gt;TDO&lt;/code&gt;, then the scan has determined the correct pinout. The results of the BYPASS scan can be seen below:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;[&amp;#39;defined pins: map[2:IO_2 3:IO_3 9:IO_9 10:IO_10 14:IO_14 15:IO_]&amp;#39;,
+ &amp;#39;================================&amp;#39;,
+ &amp;#39;Starting scan for pattern 0110011101001101101000010111001001&amp;#39;,
+ &amp;#39;active, TCK:IO_10 TMS:IO_14 TDO:IO_ TDI:IO_2, wrong data received (0000000000000000000000000000000000)&amp;#39;,
+ &amp;#39; try adjusting frequency, delays, pullup, check hardware connectivity&amp;#39;,
+ &amp;#39;FOUND! TCK:IO_10 TMS:IO_14 TDO:IO_ TDI:IO_9, possible nTRST: IO_3 IO_2 &amp;#39;,
+ &amp;#39;================================&amp;#39;]
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Going back to our table of pin usages, we now know the following:&lt;/p&gt;
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Pin&lt;/th&gt;
+&lt;th&gt;Voltage&lt;/th&gt;
+&lt;th&gt;Usage&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;1&lt;/td&gt;
+&lt;td&gt;0V&lt;/td&gt;
+&lt;td&gt;GND&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;2&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;VCC&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;3&lt;/td&gt;
+&lt;td&gt;3.28V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;4&lt;/td&gt;
+&lt;td&gt;3.173V&lt;/td&gt;
+&lt;td&gt;???&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;5&lt;/td&gt;
+&lt;td&gt;0.02V&lt;/td&gt;
+&lt;td&gt;TDO&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;6&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;TMS&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;7&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;TDI&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr&gt;
+&lt;td&gt;8&lt;/td&gt;
+&lt;td&gt;3.284V&lt;/td&gt;
+&lt;td&gt;TCK&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;Note&lt;/strong&gt;: We are not &lt;strong&gt;required&lt;/strong&gt; to use the labeled JTAG pins on the PiFex for JTAG operations, they are configurable via OpenOCD. &lt;/p&gt;
+&lt;p&gt;So now that we know what the pins are, we need to use them to access the test access port (TAP) on the device. There is only one problem: we know our pins, but now we need to figure out how to actually use them. We can now write to the Instruction Register (IR) and Data Registers (DR), but without knowing &lt;strong&gt;what&lt;/strong&gt; to write to them, knowing the JTAG pinout is largely useless. Before we move forward, we need to figure out two things:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;What type of CPU is this?&lt;/li&gt;
+&lt;li&gt;Can we use any open-source tools to interact with it?&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;To determine what type of CPU we're dealing with, we can start with the ID. We can extract this via a tool called UrJTAG.&lt;/p&gt;
+&lt;h2&gt;UrJTAG for Reverse Engineers&lt;/h2&gt;
+&lt;p&gt;&lt;a href="http://urjtag.org/"&gt;UrJTAG&lt;/a&gt; is an open-source tool designed for performing low-level JTAG operations. This tool allows one to programmatically read and write the instruction register and corresponding data registers when connected to a JTAG TAP. It was originally designed to enable developers to use other JTAG tooling besides those provided by the original component manufacturer. Because of this tool's low-level instrumentation and introspection, it is also beneficial to us as reverse engineers when examining a new TAP. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="nf"&gt;pi&lt;/span&gt;&lt;span class="nv"&gt;@voidstar&lt;/span&gt;&lt;span class="err"&gt;:&lt;/span&gt;&lt;span class="o"&gt;~/&lt;/span&gt;&lt;span class="n"&gt;pifex&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;software&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;urjtag&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;2021.03&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;$&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;sudo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;src&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;apps&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;jtag&lt;/span&gt;
+&lt;span class="n"&gt;UrJTAG&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;2021.03&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;#&lt;/span&gt;
+&lt;span class="n"&gt;Copyright&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;C&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2002&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2003&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;ETC&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;o&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="n"&gt;Copyright&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;C&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2007&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2008&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2009&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Kolja&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Waschk&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ow"&gt;and&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;the&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;respective&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;authors&lt;/span&gt;
+&lt;span class="n"&gt;UrJTAG&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;is&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;free&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;software&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;covered&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;by&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;the&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;GNU&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;General&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;Public&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;License&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ow"&gt;and&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;you&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;are&lt;/span&gt;
+&lt;span class="n"&gt;welcome&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;change&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;it&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ow"&gt;and&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="ow"&gt;or&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;distribute&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;copies&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;of&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;it&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;under&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;certain&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;conditions&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="n"&gt;There&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;is&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;no&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;warranty&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;UrJTAG&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="nl"&gt;warning&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;UrJTAG&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;may&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;damage&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;your&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;hardware&lt;/span&gt;&lt;span class="err"&gt;!&lt;/span&gt;
+&lt;span class="n"&gt;Type&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;quit&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;exit&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="ss"&gt;&amp;quot;help&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;help&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;cable&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;gpio&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;tck&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;tdi&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;9&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;tms&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;14&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;tdo&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="mi"&gt;15&lt;/span&gt;
+&lt;span class="n"&gt;Initializing&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;GPIO&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;JTAG&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Chain&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;idcode&lt;/span&gt;
+&lt;span class="n"&gt;Reading&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;bytes&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;of&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;idcode&lt;/span&gt;
+&lt;span class="k"&gt;Read&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;10110001&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0xb1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00110100&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x34&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000100&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x04&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00010000&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x10&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x00&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x00&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x00&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x00&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;detect&lt;/span&gt;
+&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nl"&gt;length&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;
+&lt;span class="n"&gt;Chain&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nl"&gt;length&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Device&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nl"&gt;Id&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00010000000001000011010010110001&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mh"&gt;0x100434B1&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="k"&gt;Unknown&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;manufacturer&lt;/span&gt;&lt;span class="err"&gt;!&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;01001011000&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;usr&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="k"&gt;local&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;share&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;urjtag&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;MANUFACTURERS&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;discover&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1111&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0001&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nl"&gt;warning&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;TDO&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;seems&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;be&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;stuck&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;at&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0010&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0011&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0100&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0101&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0110&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0111&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1001&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1010&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;32&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1011&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;32&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1100&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;32&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1101&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;Detecting&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;DR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;length&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;IR&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1110&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;...&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Using the data that we gathered from our previous scans, we can set up our cable in UrJTAG as follows:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;cable gpio tck=10 tdi=9 tms=14 tdo=15
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This tells UrJTAG that we are connected to our target via GPIO pins on a Linux device; we then follow that with GPIO pin assignments for each JTAG signal. After defining our cable, we can run the &lt;code&gt;detect&lt;/code&gt;, &lt;code&gt;idcode&lt;/code&gt;, and &lt;code&gt;discover&lt;/code&gt; commands, which will attempt to learn more about the TAP that it is connected to, resulting in the output above.&lt;/p&gt;
+&lt;p&gt;After running a UrJTAG scan, we now know the following:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;How many available DRs are present&lt;/li&gt;
+&lt;li&gt;The width of all of the available DRs&lt;/li&gt;
+&lt;li&gt;Confirmation of the CPU ID&lt;/li&gt;
+&lt;li&gt;Confirmation of the JTAG pinout&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This is a lot of great information that we did not have at the beginning of this post, but what can we do with it? In order to read memory, set breakpoints, etc., we need to know more about how to interact with these registers. Without a datasheet, this is a difficult task. However, there are other open-source tools that we can leverage before attempting &lt;a href="https://fahrplan.events.ccc.de/congress/2009/Fahrplan/attachments/1435_JTAG.pdf"&gt;black box reverse engineering of the JTAG TAP&lt;/a&gt;.&lt;/p&gt;
+&lt;h2&gt;OpenOCD for Reverse Engineers&lt;/h2&gt;
+&lt;p&gt;Armed with this information, we can search the ID and determine that this chip uses the ARCompact architecture, and if we check the configuration files for OpenOCD, we can see this ID code in the following files:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pi@voidstar:~/pifex/software/openocd/tcl/cpu/arc&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;ls
+common.tcl&lt;span class="w"&gt; &lt;/span&gt;em.tcl&lt;span class="w"&gt;  &lt;/span&gt;hs.tcl&lt;span class="w"&gt;  &lt;/span&gt;v2.tcl
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Let's see what CPUs reference these files, this will give us a better understanding of how to write a generic OpenOCD config file for an ARCompact target. &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pi@voidstar:~/pifex/software/openocd/tcl&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-r&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arc/common&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;*
+cpu/arc/v2.tcl:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/common.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+pi@voidstar:~/pifex/software/openocd/tcl&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-r&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arc/v2&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;*
+cpu/arc/em.tcl:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/v2.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+cpu/arc/hs.tcl:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/v2.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+pi@voidstar:~/pifex/software/openocd/tcl&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-r&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arc/hs&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;*
+target/snps_hsdk.cfg:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/hs.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+target/snps_hsdk_4xd.cfg:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/hs.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+pi@voidstar:~/pifex/software/openocd/tcl&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;grep&lt;span class="w"&gt; &lt;/span&gt;-r&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arc/em&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;*
+target/snps_em_sk_fpga.cfg:source&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;find&lt;span class="w"&gt; &lt;/span&gt;cpu/arc/em.tcl&lt;span class="o"&gt;]&lt;/span&gt;
+pi@voidstar:~/pifex/software/openocd/tcl&lt;span class="w"&gt; &lt;/span&gt;$
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;It looks like there is a few target file that uses these config files:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;snps_hsdk&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;snps_hsdk_4xd&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;snps_em_sk_fpga&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Let's do one more quick search before trying to write our own config file; if we search for the above config files, we find the following:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pi@voidstar:~/pifex/software/openocd/tcl/board&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;ls&lt;span class="w"&gt; &lt;/span&gt;-lathr&lt;span class="w"&gt; &lt;/span&gt;*snps*
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;411&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_hsdk_4xd.cfg
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;416&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_hsdk.cfg
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;615&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_em_sk_v2.2.cfg
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;659&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_em_sk_v2.1.cfg
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;555&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_em_sk_v1.cfg
+-rw-r--r--&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;pi&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;612&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;May&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;18&lt;/span&gt;:20&lt;span class="w"&gt; &lt;/span&gt;snps_em_sk.cfg
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;All of these config files are very straightforward and essentially import one of the three files located in the &lt;code&gt;target&lt;/code&gt; folder. Taking some basic information from the target folder we will construct our own OpenOCD as shown below:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;source&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;find&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;cpu&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;arc&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;hs&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;tcl&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+&lt;span class="n"&gt;transport&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;select&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;jtag&lt;/span&gt;
+&lt;span class="c1"&gt;# We don&amp;#39;t know much about this CPU at the moment, until we do we&amp;#39;ll assume that&lt;/span&gt;
+&lt;span class="c1"&gt;# it has one core that we will index at 0 and that the dbg&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_coreid&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_dbgbase&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="c1"&gt;# CHIPNAME will be used to choose core family (600, 700 or EM). As far as&lt;/span&gt;
+&lt;span class="c1"&gt;# OpenOCD is concerned EM and HS are identical.&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_CHIPNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;arc&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;em&lt;/span&gt;
+&lt;span class="n"&gt;set&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_CHIPNAME&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;cpu&lt;/span&gt;
+&lt;span class="c1"&gt;# Create the TAP using the information we extracted via UrJTAG and the IDCODE scan&lt;/span&gt;
+&lt;span class="n"&gt;jtag&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;newtap&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_CHIPNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;cpu&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;irlen&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;ircapture&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mh"&gt;0x1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;expected&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;id&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mh"&gt;0x100434b1&lt;/span&gt;
+&lt;span class="c1"&gt;# OpenOCD requires us to create a target for debugging the target; most of the &lt;/span&gt;
+&lt;span class="c1"&gt;# provided arguments are variable names that we&amp;#39;ve already set up; however, we must &lt;/span&gt;
+&lt;span class="c1"&gt;# specify the architecture; in this case we&amp;#39;ll use ARCv2, the assumed architecture of &lt;/span&gt;
+&lt;span class="c1"&gt;# this CPU&lt;/span&gt;
+&lt;span class="n"&gt;target&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;create&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;arcv2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;chain&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;position&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;
+&lt;span class="c1"&gt;# Next we configure our initial guesses for the coreid and base address for debug regions of memory&lt;/span&gt;
+&lt;span class="c1"&gt;# We&amp;#39;re not using these at the moment, but perhaps after further reversing, we&amp;#39;ll learn more&lt;/span&gt;
+&lt;span class="c1"&gt;# and can come back and update them&lt;/span&gt;
+&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;configure&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;coreid&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;configure&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;dbgbase&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;span class="c1"&gt;# Here, we are defining what to do when a reset event occurs&lt;/span&gt;
+&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;configure&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;event&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;reset&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nb"&gt;assert&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;arc_hs_reset $_TARGETNAME&amp;quot;&lt;/span&gt;
+&lt;span class="c1"&gt;# The following two lines were pulled from the ARC-specific examples in OpenOCD &lt;/span&gt;
+&lt;span class="c1"&gt;# These seem to be used across all ARCompact variants supported by OpenOCD&lt;/span&gt;
+&lt;span class="n"&gt;arc_hs_init_regs&lt;/span&gt;
+&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="n"&gt;_TARGETNAME&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;arc&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;cache&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;l2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;auto&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;This file will let OpenOCD know what pins to use on the Raspberry Pi and the specifics about our target CPU. The following config file can be used to configure the Raspberry Pi GPIO pins.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;source [interface/raspberrypi-native.cfg]
+
+transport select jtag
+
+adapter gpio tck -chip 0 10
+adapter gpio tms -chip 0 14
+adapter gpio tdi -chip 0 9
+adapter gpio tdo -chip 0 15
+
+adapter speed 100
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;If we run OpenOCD using these config files as an argument, we see the following:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;pi@voidstar:~/pifex/ssd-example&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;openocd&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;raspberrypi-io.cfg&lt;span class="w"&gt; &lt;/span&gt;-f&lt;span class="w"&gt; &lt;/span&gt;ssd_example.cfg
+Open&lt;span class="w"&gt; &lt;/span&gt;On-Chip&lt;span class="w"&gt; &lt;/span&gt;Debugger&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;0&lt;/span&gt;.12.0+dev-01573-gbc9ca5f4a&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="m"&gt;2024&lt;/span&gt;-05-04-18:24&lt;span class="o"&gt;)&lt;/span&gt;
+Licensed&lt;span class="w"&gt; &lt;/span&gt;under&lt;span class="w"&gt; &lt;/span&gt;GNU&lt;span class="w"&gt; &lt;/span&gt;GPL&lt;span class="w"&gt; &lt;/span&gt;v2
+For&lt;span class="w"&gt; &lt;/span&gt;bug&lt;span class="w"&gt; &lt;/span&gt;reports,&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nb"&gt;read&lt;/span&gt;
+&lt;span class="w"&gt;        &lt;/span&gt;http://openocd.org/doc/doxygen/bugs.html
+adapter&lt;span class="w"&gt; &lt;/span&gt;speed:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;100&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;kHz
+Warn&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;Transport&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;jtag&amp;quot;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;was&lt;span class="w"&gt; &lt;/span&gt;already&lt;span class="w"&gt; &lt;/span&gt;selected
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;target&lt;span class="w"&gt; &lt;/span&gt;has&lt;span class="w"&gt; &lt;/span&gt;l2&lt;span class="w"&gt; &lt;/span&gt;cache&lt;span class="w"&gt; &lt;/span&gt;enabled&lt;span class="w"&gt; &lt;/span&gt;is&lt;span class="w"&gt; &lt;/span&gt;enabled
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;Listening&lt;span class="w"&gt; &lt;/span&gt;on&lt;span class="w"&gt; &lt;/span&gt;port&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;6666&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;tcl&lt;span class="w"&gt; &lt;/span&gt;connections
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;Listening&lt;span class="w"&gt; &lt;/span&gt;on&lt;span class="w"&gt; &lt;/span&gt;port&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;4444&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;telnet&lt;span class="w"&gt; &lt;/span&gt;connections
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;BCM2835&lt;span class="w"&gt; &lt;/span&gt;GPIO&lt;span class="w"&gt; &lt;/span&gt;JTAG/SWD&lt;span class="w"&gt; &lt;/span&gt;bitbang&lt;span class="w"&gt; &lt;/span&gt;driver
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;clock&lt;span class="w"&gt; &lt;/span&gt;speed&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;100&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;kHz
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;JTAG&lt;span class="w"&gt; &lt;/span&gt;tap:&lt;span class="w"&gt; &lt;/span&gt;arc-em.cpu&lt;span class="w"&gt; &lt;/span&gt;tap/device&lt;span class="w"&gt; &lt;/span&gt;found:&lt;span class="w"&gt; &lt;/span&gt;0x100434b1&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;mfg:&lt;span class="w"&gt; &lt;/span&gt;0x258&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;ARC&lt;span class="w"&gt; &lt;/span&gt;International&lt;span class="o"&gt;)&lt;/span&gt;,&lt;span class="w"&gt; &lt;/span&gt;part:&lt;span class="w"&gt; &lt;/span&gt;0x0043,&lt;span class="w"&gt; &lt;/span&gt;ver:&lt;span class="w"&gt; &lt;/span&gt;0x1&lt;span class="o"&gt;)&lt;/span&gt;
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;arc-em.cpu&lt;span class="o"&gt;]&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;Examination&lt;span class="w"&gt; &lt;/span&gt;succeed
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;starting&lt;span class="w"&gt; &lt;/span&gt;gdb&lt;span class="w"&gt; &lt;/span&gt;server&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;arc-em.cpu&lt;span class="w"&gt; &lt;/span&gt;on&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;3333&lt;/span&gt;
+Info&lt;span class="w"&gt; &lt;/span&gt;:&lt;span class="w"&gt; &lt;/span&gt;Listening&lt;span class="w"&gt; &lt;/span&gt;on&lt;span class="w"&gt; &lt;/span&gt;port&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;3333&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;for&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;gdb&lt;span class="w"&gt; &lt;/span&gt;connections
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Success! It looks like we have connected to the JTAG TAP of this SSD using OpenOCD. Next, we will use this to read memory and single-step through the running firmware on the SSD itself. &lt;/p&gt;
+&lt;h3&gt;Reading Memory with OpenOCD&lt;/h3&gt;
+&lt;p&gt;Now that we have a working OpenOCD connection, we can read memory using the &lt;code&gt;mdw&lt;/code&gt; and &lt;code&gt;dump_image&lt;/code&gt; commands. We will dump a small region of memory as a test:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="nx"&gt;pi&lt;/span&gt;&lt;span class="err"&gt;@&lt;/span&gt;&lt;span class="nx"&gt;voidstar&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="o"&gt;~&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;$&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;telnet&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;localhost&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4444&lt;/span&gt;
+&lt;span class="nx"&gt;Trying&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;::&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="nx"&gt;Trying&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m m-Double"&gt;127.0.0.1&lt;/span&gt;&lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="nx"&gt;Connected&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;localhost&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="nx"&gt;Escape&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;character&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;is&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="o"&gt;^&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="err"&gt;&amp;#39;&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;
+&lt;span class="nx"&gt;Open&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;On&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;Chip&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;Debugger&lt;/span&gt;
+&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;mdw&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;100&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000000&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000214&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000224&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000234&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000244&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000254&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000274&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000204&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000020&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000214&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000224&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000234&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000244&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000254&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1000274&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000204&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000040&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000214&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000224&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000234&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000244&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000254&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2000274&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3000204&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000060&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3000214&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0000204&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="nx"&gt;f80240a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;80001000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="nx"&gt;f80220a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;26001000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="nx"&gt;f80230a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;80001000&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000080&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3000254&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3000274&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;7080266&lt;/span&gt;&lt;span class="nx"&gt;b&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;70&lt;/span&gt;&lt;span class="nx"&gt;c0266b&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00000000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;f802020&lt;/span&gt;
+&lt;span class="mh"&gt;0x000000a0&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;05&lt;/span&gt;&lt;span class="nx"&gt;b00000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00402069&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;7000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;7000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;7000264&lt;/span&gt;&lt;span class="nx"&gt;a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;ffcf07f1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;500071&lt;/span&gt;&lt;span class="nx"&gt;cf&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1154&lt;/span&gt;&lt;span class="nx"&gt;a000&lt;/span&gt;
+&lt;span class="mh"&gt;0x000000c0&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;70&lt;/span&gt;&lt;span class="nx"&gt;cf0802&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;05&lt;/span&gt;&lt;span class="nx"&gt;f81000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00&lt;/span&gt;&lt;span class="nx"&gt;a01800&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;08001000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00201954&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;78&lt;/span&gt;&lt;span class="nx"&gt;e07ee0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;71&lt;/span&gt;&lt;span class="nx"&gt;cfc5e1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00005000&lt;/span&gt;
+&lt;span class="mh"&gt;0x000000e0&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0880110&lt;/span&gt;&lt;span class="nx"&gt;c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;500072&lt;/span&gt;&lt;span class="nx"&gt;cf&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;b8e4a000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;11&lt;/span&gt;&lt;span class="nx"&gt;dcf47f&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;b8810880&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;002219&lt;/span&gt;&lt;span class="nx"&gt;dc&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;08001204&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="nx"&gt;a04b880&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000100&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;db000020&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00&lt;/span&gt;&lt;span class="nx"&gt;e01a4c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;fa01a44&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;80000000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;fff208a&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00201&lt;/span&gt;&lt;span class="nx"&gt;a58&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;08001268&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00201&lt;/span&gt;&lt;span class="nx"&gt;a68&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000120&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;08001274&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;fc32086&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;a822085&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00201&lt;/span&gt;&lt;span class="nx"&gt;a74&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;500075&lt;/span&gt;&lt;span class="nx"&gt;cf&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1517&lt;/span&gt;&lt;span class="nx"&gt;a0a8&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;20861880&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;b88000fc&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000140&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;10221&lt;/span&gt;&lt;span class="nx"&gt;d17&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0800125&lt;/span&gt;&lt;span class="nx"&gt;c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;f802004&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="nx"&gt;feefff8&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;00201&lt;/span&gt;&lt;span class="nx"&gt;a5c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0800125&lt;/span&gt;&lt;span class="nx"&gt;c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="nx"&gt;f802004&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="nx"&gt;fef8ff8&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000160&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="nx"&gt;a5cb89c&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;d8010020&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0022190&lt;/span&gt;&lt;span class="nx"&gt;d&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;08001204&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="nx"&gt;a04b881&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;15140020&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;b8841880&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;10221&lt;/span&gt;&lt;span class="nx"&gt;d14&lt;/span&gt;
+&lt;span class="mh"&gt;0x00000180&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;500071&lt;/span&gt;&lt;span class="nx"&gt;cf&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;110&lt;/span&gt;&lt;span class="nx"&gt;d07f0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;b8840880&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0022190&lt;/span&gt;&lt;span class="nx"&gt;d&lt;/span&gt;
+&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;dump_image&lt;/span&gt;
+&lt;span class="nx"&gt;dump_image&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;filename&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;address&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;size&lt;/span&gt;
+&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;dump_image&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;mem&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="nx"&gt;test&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nx"&gt;bin&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mh"&gt;0x100000&lt;/span&gt;
+&lt;span class="p"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;dumped&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;1048576&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;bytes&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;in&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m m-Double"&gt;264.823212&lt;/span&gt;&lt;span class="nx"&gt;s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="m m-Double"&gt;3.867&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nx"&gt;KiB&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nx"&gt;s&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Next, we'll want to review this memory dump to make sure that it's accurate. This creates an interesting problem: we don't know what the memory contents will look like at address &lt;code&gt;0&lt;/code&gt;, especially since we don't have a datasheet or an example firmware image. In this case, we will start by running strings on the resulting binary; some of these results can be seen below:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="nb"&gt;pi&lt;/span&gt;&lt;span class="p"&gt;@&lt;/span&gt;&lt;span class="n"&gt;voidstar&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="o"&gt;~/&lt;/span&gt;&lt;span class="n"&gt;pifex&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ssd&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;example&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;$&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nb"&gt;strings&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;mem&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;test&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="n"&gt;bin&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;|&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;less&lt;/span&gt;
+02023042&lt;span class="n"&gt;MS2295CAX&lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;XYYYYYYYY&lt;/span&gt;
+&lt;span class="n"&gt;SM2259PARA&lt;/span&gt;
+&lt;span class="s"&gt;SM2259BT&lt;/span&gt;
+&lt;span class="n"&gt;xSM2259BTDS&lt;/span&gt;
+&lt;span class="s"&gt;SM2259AC20200324&lt;/span&gt;
+&lt;span class="n"&gt;L&lt;/span&gt;^&lt;span class="n"&gt;r&lt;/span&gt;&lt;span class="o"&gt;|&lt;/span&gt;
+&lt;span class="c"&gt;%`)$5a94&lt;/span&gt;
+&lt;span class="n"&gt;SMISSDRetryTable&lt;/span&gt;
+&lt;span class="s"&gt;Device_FW_Authentication&lt;/span&gt;
+&lt;span class="n"&gt;xFW_MAC_Key&lt;/span&gt;
+&lt;span class="s"&gt;SM2259ROMCodeTagZZZZ&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;We've got human-readable strings, which is a great sign! We also have the part number for the CPU in these strings, which leads me to believe we've correctly extracted this memory region via OpenOCD. However, we need to learn more about this processor and what areas might interest us. We can figure this out using OpenOCD to attach to the target CPU via GDB.&lt;/p&gt;
+&lt;h3&gt;Debugging with OpenOCD&lt;/h3&gt;
+&lt;p&gt;Now that we have OpenOCD connected to our target, we can attempt to debug the target via GDB. However, this does not come without some strings attached; we will need to compile a version of GDB capable of targeting the ARCompact architecture. Luckily for us, the good folks over at Synopsis have released a port of binutils for the ARCompact architecture. We can clone the repository &lt;a href="https://github.com/foss-for-synopsys-dwc-arc-processors/binutils-gdb"&gt;here&lt;/a&gt; and build it on the Raspberry Pi (&lt;strong&gt;Note&lt;/strong&gt;: see the appendix for instructions on how to build this software).&lt;/p&gt;
+&lt;p&gt;After building GDB and attempting to connect to the GDB server presented by OpenOCD, we see the following:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nt"&gt;gdb&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;x&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="nt"&gt;10i&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="nt"&gt;pc&lt;/span&gt;
+&lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x22b0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;brne_s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r0&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;10&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;&lt;span class="nt"&gt;0x22ba&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22b2&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;ldb&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nc"&gt;di&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="cp"&gt;[&lt;/span&gt;&lt;span class="nx"&gt;r18&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="cp"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22b6&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;btst_s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;0x7&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22b8&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;beq_s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;-282&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;&lt;span class="nt"&gt;0x219e&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22ba&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;ldb&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="cp"&gt;[&lt;/span&gt;&lt;span class="mh"&gt;0x852&lt;/span&gt;&lt;span class="cp"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22c2&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;bbit0&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nc"&gt;t&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;18&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;&lt;span class="nt"&gt;0x22d2&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22c6&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;ldb&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nc"&gt;di&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="cp"&gt;[&lt;/span&gt;&lt;span class="nx"&gt;r13&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;113&lt;/span&gt;&lt;span class="cp"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22ca&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;bset_s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22cc&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;stb&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nc"&gt;di&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="cp"&gt;[&lt;/span&gt;&lt;span class="nx"&gt;r13&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt;&lt;span class="mi"&gt;113&lt;/span&gt;&lt;span class="cp"&gt;]&lt;/span&gt;
+&lt;span class="w"&gt;   &lt;/span&gt;&lt;span class="nt"&gt;0x22d0&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;b_s&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;12&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;&lt;span class="nt"&gt;0x22dc&lt;/span&gt;
+&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nt"&gt;gdb&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;i&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;r&lt;/span&gt;
+&lt;span class="nt"&gt;r0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x101&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;257&lt;/span&gt;
+&lt;span class="nt"&gt;r2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x10004aac&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;268454572&lt;/span&gt;
+&lt;span class="nt"&gt;r3&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x100014b6&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;268440758&lt;/span&gt;
+&lt;span class="nt"&gt;r5&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x50100000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;1343225856&lt;/span&gt;
+&lt;span class="nt"&gt;r6&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x50100000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;1343225856&lt;/span&gt;
+&lt;span class="nt"&gt;r7&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x10&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;16&lt;/span&gt;
+&lt;span class="nt"&gt;r8&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r9&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r10&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r11&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;4&lt;/span&gt;
+&lt;span class="nt"&gt;r12&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r13&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x50000000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;1342177280&lt;/span&gt;
+&lt;span class="nt"&gt;r14&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r15&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x0&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0&lt;/span&gt;
+&lt;span class="nt"&gt;r16&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;0x5000a000&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nt"&gt;1342218240&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Success! Using OpenOCD and GDB, we are able to single-step through the firmware and read register values. These register values tell us more about potential memory regions of interest that we can read out, specifically &lt;code&gt;0x50000000&lt;/code&gt; and &lt;code&gt;0x10000000&lt;/code&gt;. As a final test, we will load the area of memory we extracted initially into Ghidra and see if the instructions match what we see in GDB.  &lt;/p&gt;
+&lt;h3&gt;Loading the Firmware into Ghidra&lt;/h3&gt;
+&lt;p&gt;While the current Ghidra release does not support ARCompact, a wonderful fork is being maintained &lt;a href="https://github.com/niooss-ledger/ghidra"&gt;here&lt;/a&gt;. We can build this and use it to analyze our firmware image. &lt;/p&gt;
+&lt;p&gt;If we look at offset &lt;code&gt;0&lt;/code&gt; in the firmware image, we have what appears to be an interrupt vector table of some sort:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/ivt.png"&gt;&lt;/p&gt;
+&lt;p&gt;If we look a little further at the image, we can see that there are some branch instructions for a region that we've not extracted yet. We also see that the two areas we previously identified (&lt;code&gt;0x50000000&lt;/code&gt; and &lt;code&gt;0x10000000&lt;/code&gt;) are being referenced as well. These are likely internal/external SRAM regions, while the area starting around &lt;code&gt;0x4007000&lt;/code&gt; appears to be used as code.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/interesting.png"&gt;&lt;/p&gt;
+&lt;p&gt;Let's try to extract that region, load it into our Ghidra database, and see if the results make sense. First, we'll dump the region out using OpenOCD, as shown below:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;dump_image 0x40070000.bin 0x40070000 0x100000
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;We can then import it into our Ghidra database, resulting in the following:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/imported_new_region.jpg"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Success:&lt;/strong&gt; It looks like we have code in this region, and it disassembles properly. &lt;/p&gt;
+&lt;p&gt;From here, we now have the following primitives available to us on the SSD:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Memory R/W&lt;/li&gt;
+&lt;li&gt;Control Flow Monitoring / Modifications&lt;/li&gt;
+&lt;li&gt;Register Reads/Writes&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;This puts one in a perfect position to do more software research, look for bugs or errors in their code, or even attempt to modify the firmware or reverse engineer the update process!&lt;/p&gt;
+&lt;h1&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;If you've read this far, thank you for taking the time to read it all. This probably should have been two separate posts!&lt;/p&gt;
+&lt;p&gt;With this blog post, we introduced the PiFex hardware and software tools. These tools utilize open-source software and commercial hardware to aid in embedded device assessments. We then demonstrated how to use these tools to discover and enumerate an undocumented JTAG TAP on an SSD. Using this TAP, we were able to read memory and control execution on the target, giving us full control over the device. &lt;/p&gt;
+&lt;p&gt;If you want to stay up to date on the official release, sign up for our mailing list &lt;a href="http://eepurl.com/hSl31f"&gt;here&lt;/a&gt;, or you can order one &lt;a href="https://voidmalt.gumroad.com/l/pifex"&gt;here&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;If you're interested in a &lt;a href="https://voidstarsec.com/hhb.html"&gt;private training&lt;/a&gt; at your organization, please don't hesitate to &lt;a href="https://voidstarsec.com/#contact"&gt;contact us&lt;/a&gt;. We also have our only public training available this year at &lt;a href="https://ringzer0.training/doubledown24-hardware-hacking-bootcamp/"&gt;RingZer0 DoubleDown Vegas&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;A big thanks goes out to Nash Reilly for his help and review of the initial hardware design; you can check out his blog &lt;a href="https://cushychicken.github.io"&gt;here&lt;/a&gt; and his other two job sites below:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="https://fpgajobs.com"&gt;fpgajobs.com&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="https://firmwarejobs.com"&gt;firmwarejobs.com&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1&gt;Appendix&lt;/h1&gt;
+&lt;h2&gt;Building Binutils&lt;/h2&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;./configure --target=arc-elf32 --disable-werror
+make
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content><category term="Pifex"></category><category term="pifex"></category><category term="jtag"></category><category term="hardware"></category><category term="blog"></category></entry><entry><title>"Extending Ghidra Part 1: Setting up a Development Environment"</title><link href="/extending-ghidra-part-1-setting-up-a-development-environment.html" rel="alternate"></link><published>2021-12-24T00:00:00-07:00</published><updated>2021-12-24T00:00:00-07:00</updated><author><name>"Matthew Alt"</name></author><id>tag:None,2021-12-24:/extending-ghidra-part-1-setting-up-a-development-environment.html</id><summary type="html">&lt;p&gt;With this post, I hope to explain how to set up a development environment for the latest Ghidra release on Ubuntu 20.04. After following the steps outlined below, we will have the ability to write, debug and export custom Ghidra plugins, modules, and scripts.&lt;/p&gt;</summary><content type="html">&lt;h1&gt;Extending Ghidra Part 1: Setting up a Development Environment&lt;/h1&gt;
+&lt;h1&gt;Overview&lt;/h1&gt;
+&lt;p&gt;This post is the first in a series of posts to discuss and review how to extend and augment Ghidra for firmware analysis. &lt;/p&gt;
+&lt;p&gt;&lt;a href="https://ghidra-sre.org/"&gt;Ghidra&lt;/a&gt; is a software reverse engineering tool developed by NSA. If you are familiar with IDA-Pro, r2, or Binary Ninja, you are already likely familiar with Ghidra. While one can use any of the above for reverse engineering, Ghidra is quickly gaining traction in the SRE community because it is open source and has a well-documented API for scripting and analyzing binaries. Ghidra is also growing with contributions from the community; most notably for me was the addition of the Infineon Tricore architecture to the list of supported CPUs.&lt;/p&gt;
+&lt;p&gt;Throughout your reverse engineering efforts, you may find yourself wanting to augment or extend Ghidra by writing additional plugins or scripts when dealing with embedded systems and bespoke firmware image formats. You may also want to debug some of the applicable &lt;a href="https://wrongbaud.github.io/posts/ghidra-debugger/"&gt;pre-existing&lt;/a&gt; scripts or scripts that others have developed. Setting up a proper development environment lets you easily export processor modules and &lt;a href="https://wrongbaud.github.io/posts/kong-vs-ghidra/"&gt;scripts&lt;/a&gt;, making them more accessible for other people.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; If you're not familiar with reverse engineering / Ghidra, you may find &lt;a href="https://wrongbaud.github.io/posts/ghidra-training/"&gt;this course&lt;/a&gt; helpful!&lt;/p&gt;
+&lt;h2&gt;Goals&lt;/h2&gt;
+&lt;p&gt;With this post, I hope to explain how to set up a development environment for the latest Ghidra release on Ubuntu 20.04. After following the steps outlined below, we will have the ability to write, debug and export custom Ghidra plugins, modules, and scripts. &lt;/p&gt;
+&lt;h2&gt;Prerequisites&lt;/h2&gt;
+&lt;p&gt;If you wish to follow along with this post, prepare the following:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Ubuntu 20.04 VM&lt;/li&gt;
+&lt;li&gt;Eclipse &lt;ul&gt;
+&lt;li&gt;&lt;a href="https://www.eclipse.org/downloads/"&gt;Download page&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Docker&lt;ul&gt;
+&lt;li&gt;Follow install instructions &lt;a href="https://docs.docker.com/engine/install/ubuntu/"&gt;here&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;li&gt;Java&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;sudo apt install openjdk-11-jre openjdk-11-dbg&lt;/code&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h1&gt;Building Ghidra&lt;/h1&gt;
+&lt;p&gt;We will be basing this tutorial on the latest release version of Ghidra; at the time of writing, this is 10.2, and &lt;a href="https://github.com/NationalSecurityAgency/ghidra/commit/fe7585b49207b440f99927a1b46d20a878ad17e7"&gt;this&lt;/a&gt; is the newest commit. To build Ghidra, we will use dukebarman's &lt;a href="https://github.com/dukebarman/ghidra-builder"&gt;ghidra-builder&lt;/a&gt;. This docker container will assist us in the process of building Ghidra. Follow the steps below to build the latest version of Ghidra.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Install docker on your host machine following &lt;a href="https://docs.docker.com/engine/install/ubuntu/"&gt;these instructions&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Clone the &lt;a href="https://github.com/dukebarman/ghidra-builder"&gt;ghidra-builder&lt;/a&gt; repository, and follow the build instructions as shown below:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;git&lt;span class="w"&gt; &lt;/span&gt;clone&lt;span class="w"&gt; &lt;/span&gt;git@github.com:dukebarman/ghidra-builder.git
+&lt;span class="nb"&gt;cd&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;ghidra-builder
+&lt;span class="nb"&gt;cd&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;workdir
+sudo&lt;span class="w"&gt; &lt;/span&gt;../docker-tpl/run&lt;span class="w"&gt; &lt;/span&gt;./build_ghidra.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;When you run these commands, you might see the following error:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;FAILURE&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;failed&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;an&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;exception&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+
+&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Where&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;
+&lt;span class="n"&gt;Build&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;file&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;/files/ghidra/build.gradle&amp;#39;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;line&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;29&lt;/span&gt;
+
+&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;What&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;went&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;wrong&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;
+&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;problem&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;occurred&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;evaluating&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;root&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;project&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s1"&gt;&amp;#39;ghidra.&amp;#39;&lt;/span&gt;
+&lt;span class="o"&gt;&amp;gt;&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Requires&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;at&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;least&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Gradle&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;6.4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;but&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;was&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;run&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mf"&gt;6.0&lt;/span&gt;
+
+&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Try&lt;/span&gt;&lt;span class="o"&gt;:&lt;/span&gt;
+&lt;span class="n"&gt;Run&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;stacktrace&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;option&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kd"&gt;get&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;the&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;stack&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nf"&gt;trace&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Run&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;info&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;or&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;debug&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;option&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kd"&gt;get&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;more&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;log&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;output&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Run&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;with&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;scan&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;to&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="kd"&gt;get&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;full&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;insights&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;
+
+&lt;span class="o"&gt;*&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;Get&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;more&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;help&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;at&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;https&lt;/span&gt;&lt;span class="o"&gt;://&lt;/span&gt;&lt;span class="n"&gt;help&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="na"&gt;org&lt;/span&gt;
+
+&lt;span class="n"&gt;BUILD&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;FAILED&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="k"&gt;in&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;43&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Update the Dockerfile&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;To fix these, we need to update the version of Gradle used by the docker container and the environment variable used to reference Gradle. Locate the following lines in the &lt;code&gt;Dockerfile&lt;/code&gt; and modify them as shown below&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;&lt;span class="n"&gt;dev&lt;/span&gt;&lt;span class="err"&gt;@&lt;/span&gt;&lt;span class="n"&gt;ubuntu&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="o"&gt;~/&lt;/span&gt;&lt;span class="n"&gt;tools&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ghidra&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;ghidra&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;builder&lt;/span&gt;&lt;span class="o"&gt;$&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;git&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;diff&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;docker&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;tpl&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;Dockerfile&lt;/span&gt;
+&lt;span class="n"&gt;diff&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;--&lt;/span&gt;&lt;span class="n"&gt;git&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;docker&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;tpl&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;Dockerfile&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;docker&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;tpl&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;Dockerfile&lt;/span&gt;
+&lt;span class="n"&gt;index&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;6391&lt;/span&gt;&lt;span class="n"&gt;c29&lt;/span&gt;&lt;span class="o"&gt;..&lt;/span&gt;&lt;span class="mi"&gt;9&lt;/span&gt;&lt;span class="n"&gt;ccf7fa&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;100644&lt;/span&gt;
+&lt;span class="o"&gt;---&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;docker&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;tpl&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;Dockerfile&lt;/span&gt;
+&lt;span class="o"&gt;+++&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;docker&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;tpl&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;Dockerfile&lt;/span&gt;
+&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;RUN&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;wget&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;https&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="n"&gt;services&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;org&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;distributions&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;6.0&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;bin&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zip&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;P&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;tmp&lt;/span&gt;
+&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="n"&gt;RUN&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;wget&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;https&lt;/span&gt;&lt;span class="p"&gt;:&lt;/span&gt;&lt;span class="o"&gt;//&lt;/span&gt;&lt;span class="n"&gt;services&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;org&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;distributions&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;7.3&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;bin&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;zip&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;P&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;tmp&lt;/span&gt;
+&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="n"&gt;ENV&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;GRADLE_HOME&lt;/span&gt;&lt;span class="o"&gt;=/&lt;/span&gt;&lt;span class="n"&gt;home&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;dockerbot&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;6.0&lt;/span&gt;
+&lt;span class="o"&gt;+&lt;/span&gt;&lt;span class="n"&gt;ENV&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="n"&gt;GRADLE_HOME&lt;/span&gt;&lt;span class="o"&gt;=/&lt;/span&gt;&lt;span class="n"&gt;home&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;dockerbot&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;/&lt;/span&gt;&lt;span class="n"&gt;gradle&lt;/span&gt;&lt;span class="o"&gt;-&lt;/span&gt;&lt;span class="mf"&gt;7.3&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Update &lt;code&gt;build_ghidra.sh&lt;/code&gt; to build the GhidraDev project&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;Before we try to build Ghidra again, we need to make a few other modifications. In addition to building Ghidra, we also want to generate the Ghidra Eclipse plugin. Integrating this plugin with Eclipse allows us to launch Ghidra &lt;em&gt;from&lt;/em&gt; Eclipse, giving us the ability to debug our plugins and scripts.&lt;/p&gt;
+&lt;p&gt;We can generate the Eclipse plugin when building Ghidra by adding the following lines to the &lt;code&gt;workdir/build_ghidra.sh&lt;/code&gt; script after the &lt;code&gt;gradle buildGhidra&lt;/code&gt; line:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;Gradle prepDev
+Gradle eclipse -PeclipsePDE 
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;ul&gt;
+&lt;li&gt;Run the Docker container, building Ghidra and the GhidraDev Eclipse project&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;rm&lt;span class="w"&gt; &lt;/span&gt;ghidra.bin
+&lt;span class="nb"&gt;cd&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;../
+sudo&lt;span class="w"&gt; &lt;/span&gt;workdir-tpl/build
+&lt;span class="nb"&gt;cd&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;workdir
+sudo&lt;span class="w"&gt; &lt;/span&gt;../docker-tpl/run&lt;span class="w"&gt; &lt;/span&gt;./build_ghidra.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;With these modifications, ghidra will properly build within the docker container, and the results can be found in the &lt;code&gt;out&lt;/code&gt; directory as shown below: &lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;dev@ubuntu:~/tools/ghidra/blog/ghidra-builder/workdir$&lt;span class="w"&gt; &lt;/span&gt;ls&lt;span class="w"&gt; &lt;/span&gt;out/
+ghidra_10.2_DEV_20211221_linux_x86_64.zip
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Before moving on to configure Eclipse with our GhidraDev extension, we will unzip our freshly built Ghidra to the workdir directory:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;dev@ubuntu:~/tools/ghidra/blog/ghidra-builder/workdir/out$&lt;span class="w"&gt; &lt;/span&gt;unzip&lt;span class="w"&gt; &lt;/span&gt;-q&lt;span class="w"&gt; &lt;/span&gt;ghidra_10.2_DEV_20211221_linux_x86_64.zip&lt;span class="w"&gt; &lt;/span&gt;-d&lt;span class="w"&gt; &lt;/span&gt;../
+dev@ubuntu:~/tools/ghidra/blog/ghidra-builder/workdir/out$&lt;span class="w"&gt; &lt;/span&gt;ls&lt;span class="w"&gt; &lt;/span&gt;../
+build_ghidra.sh&lt;span class="w"&gt;  &lt;/span&gt;ghidra&lt;span class="w"&gt;  &lt;/span&gt;ghidra_10.2_DEV&lt;span class="w"&gt;  &lt;/span&gt;out&lt;span class="w"&gt;  &lt;/span&gt;set_exec_flag.sh
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;At this point, we now have generated the following:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Ghidra 10.2 &lt;/li&gt;
+&lt;li&gt;Ghidra's eclipse projects/plugins (located in the &lt;code&gt;ghidra/GhidraBuild/EclipsePlugins&lt;/code&gt; folder)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If you're following along, your &lt;code&gt;workdir&lt;/code&gt; directory should look like this:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;dev@ubuntu:~/tools/ghidra/blog/ghidra-builder/workdir$&lt;span class="w"&gt; &lt;/span&gt;ls
+build_ghidra.sh&lt;span class="w"&gt;  &lt;/span&gt;ghidra&lt;span class="w"&gt;  &lt;/span&gt;ghidra_10.2_DEV&lt;span class="w"&gt;  &lt;/span&gt;out&lt;span class="w"&gt;  &lt;/span&gt;set_exec_flag.sh
+dev@ubuntu:~/tools/ghidra/blog/ghidra-builder/workdir$&lt;span class="w"&gt; &lt;/span&gt;ls&lt;span class="w"&gt; &lt;/span&gt;ghidra/GhidraBuild/EclipsePlugins/
+GhidraDev&lt;span class="w"&gt;  &lt;/span&gt;GhidraSleighEditor
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+
+&lt;p&gt;Next, we need to build these Eclipse plugins and then install them. &lt;/p&gt;
+&lt;h1&gt;Configuring Eclipse for Ghidra Development&lt;/h1&gt;
+&lt;p&gt;First, we need to install Eclipse; you can get the latest release &lt;a href="https://www.eclipse.org/downloads/"&gt;here&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;In the previous section, we generated the project for the GhidraDev Eclipse plugin. Next, we need to import the &lt;code&gt;GhidraDev&lt;/code&gt; project into Eclipse and build it. Before we do that, however, we need to install the following Eclipse plugins:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Eclipse CDT (C/C++ Development Tooling) 10.4 (2021-09)&lt;/li&gt;
+&lt;li&gt;PyDev Python IDE for Eclipse 9.2.0&lt;/li&gt;
+&lt;li&gt;Eclipse Plugin Development Environment&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;To install the plugins, open Eclipse and navigate to &lt;code&gt;Help&lt;/code&gt; &amp;gt; &lt;code&gt;Eclipse Marketplace&lt;/code&gt;, the following window will appear:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Eclipse Marketplace" src="https://voidstarsec.com/blog/assets/images/marketplace.png"&gt;&lt;/p&gt;
+&lt;p&gt;First, install the Eclipse plugin development environment by typing &lt;code&gt;Plugin development&lt;/code&gt; in the search bar and installing what is displayed in the images below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="PDE Plugin" src="https://voidstarsec.com/blog/assets/images/eclipse_pde.png"&gt;&lt;/p&gt;
+&lt;p&gt;Next, we need to install the C/C++ development plugin. Type CDT in the search bar, and install the plugin shown below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="CDT Plugin" src="https://voidstarsec.com/blog/assets/images/cdt.png"&gt;&lt;/p&gt;
+&lt;p&gt;Next, we need to install the PyDeV plugin:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="PyDev Plugin" src="https://voidstarsec.com/blog/assets/images/pydev.png"&gt;&lt;/p&gt;
+&lt;p&gt;After installing these three plugins, your installed plugins window should match what is shown below:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Installed Plugins" src="https://voidstarsec.com/blog/assets/images/plugins.png"&gt;&lt;/p&gt;
+&lt;h1&gt;Building and Installing the GhidraDev Plugin&lt;/h1&gt;
+&lt;p&gt;We can now import the GhidraDev plugin into Eclipse with the plugins installed. Once the plugin is imported, we will export it and install it in Eclipse, allowing us to launch Ghidra from Eclipse and debug our various plugins and scripts. &lt;/p&gt;
+&lt;p&gt;First, we import the GhidraDev project into Eclipse; this will be in your &lt;code&gt;ghidra/GhidraBuild/EclipsePlugins&lt;/code&gt; folder. To import the project, navigate to the following menu:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;File&lt;/code&gt; &amp;gt; &lt;code&gt;Import&lt;/code&gt; &amp;gt; &lt;code&gt;General&lt;/code&gt; &amp;gt; &lt;code&gt;Existing Projects into Workspace&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Importing GhidraDev" src="https://voidstarsec.com/blog/assets/images/import_ghidradev_project.png"&gt;&lt;/p&gt;
+&lt;p&gt;After importing the projects, your Eclipse window should look like this, with the &lt;code&gt;EclipseGhidraDevFeature&lt;/code&gt; and &lt;code&gt;EclipseGhidraDevPlugin&lt;/code&gt; projects displayed: &lt;/p&gt;
+&lt;p&gt;&lt;img alt="Imported Projects" src="https://voidstarsec.com/blog/assets/images/projects_imported.png"&gt;&lt;/p&gt;
+&lt;p&gt;Now that the project has been imported and built, we need to export it. To do that, navigate to the following menu:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;File&lt;/code&gt; &amp;gt; &lt;code&gt;Export&lt;/code&gt; &amp;gt; &lt;code&gt;Plug-in Development&lt;/code&gt; &amp;gt; &lt;code&gt;Deployable Features&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Export Window" src="https://voidstarsec.com/blog/assets/images/deployable_features.png"&gt;&lt;/p&gt;
+&lt;p&gt;From this window, select the &lt;code&gt;ghidra.ghiradev&lt;/code&gt; feature in the checkbox and specify a location for the archive to be exported; in the window shown below, I have set that to &lt;code&gt;/home/dev/ghidraDev.zip&lt;/code&gt;. Please note this location because, in the next section, we will be importing this archive into Eclipse!&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Export" src="https://voidstarsec.com/blog/assets/images/export.png"&gt;&lt;/p&gt;
+&lt;p&gt;Now that the plugin has been exported, we can install it in Eclipse. Do this by opening the following window:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Help&lt;/code&gt; &amp;gt; &lt;code&gt;Install New Software&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Install New Software" src="https://voidstarsec.com/blog/assets/images/install_new_software.png"&gt;&lt;/p&gt;
+&lt;p&gt;Click the &lt;code&gt;Add&lt;/code&gt; button, which will cause the following window to appear:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Add New Software" src="https://voidstarsec.com/blog/assets/images/add.png"&gt;&lt;/p&gt;
+&lt;p&gt;Next, we will load the previously generated archive by clicking on the &lt;code&gt;Archive&lt;/code&gt; button. Then, navigate to the location where you exported your &lt;code&gt;ghidraDev.zip&lt;/code&gt; file in the previous steps and select it. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="Install Plugin" src="https://voidstarsec.com/blog/assets/images/install_plugin.png"&gt;&lt;/p&gt;
+&lt;p&gt;Click next to install the plugin; once the installation is finished, you will be prompted to restart Eclipse, do this, and upon restart, you will see the &lt;code&gt;GhidraDev&lt;/code&gt; menu option in the top menu.&lt;/p&gt;
+&lt;p&gt;Now that we have installed the plugin, we can generate our first Ghidra Script project; to do this, navigate to the following menu:&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;GhidraDev&lt;/code&gt; &amp;gt; &lt;code&gt;New&lt;/code&gt; &amp;gt; &lt;code&gt;Ghidra Script Project&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;Select a name for your project; I'll use GhidraScriptsVSS for this example. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="GhidraScriptsVSS" src="https://voidstarsec.com/blog/assets/images/ghidrascriptsvss.png"&gt;&lt;/p&gt;
+&lt;p&gt;Click next to continue project configuration and then click next on the following window:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Configure Ghidra Script Project" src="https://voidstarsec.com/blog/assets/images/configure.png"&gt;&lt;/p&gt;
+&lt;p&gt;Next, we need to link our current Ghidra installation; if you followed the previous steps and built Ghidra in the docker container, this will be our &lt;code&gt;ghidra_10.2_DEV&lt;/code&gt; directory that we extracted earlier.&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Ghidra Installation" src="https://voidstarsec.com/blog/assets/images/ghidra_installation.png"&gt;&lt;/p&gt;
+&lt;p&gt;Next, you can enable Python support using the Jython interpreter bundled with the Ghidra installation pointed to in the previous section. &lt;/p&gt;
+&lt;p&gt;The Ghidra project will show up in your Eclipse projects, and we can add our first script!&lt;/p&gt;
+&lt;h1&gt;Using the GhidraDev Plugin&lt;/h1&gt;
+&lt;p&gt;In a &lt;a href="https://wrongbaud.github.io/posts/kong-vs-ghidra/"&gt;previous post on my blog&lt;/a&gt;, I wrote a Ghidra script to analyze ARM thumb mode binaries (Game Boy Advance ROMs are excellent test targets!), with a focus on finding function prologues. Let's load download that script and run it against a new binary. &lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="https://github.com/wrongbaud/ghidra-utils"&gt;Ghidra Utilities Repository&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;To add a new Java file to our project, download the &lt;a href="https://github.com/wrongbaud/ghidra-utils/blob/main/GBA/MakeFunctionsScriptGBA.java"&gt;&lt;code&gt;MakeFunctionsScriptGBA.java&lt;/code&gt;&lt;/a&gt; file and copy it into the project location. In my case, this is in the &lt;code&gt;~/ghidra_scripts&lt;/code&gt; directory. If you do not have that directory, you can determine the location by right-clicking on the &lt;code&gt;Home Scripts&lt;/code&gt; folder in the project directory and clicking &lt;code&gt;Properties&lt;/code&gt; causing the following window to appear:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Home Scripts Properties" src="https://voidstarsec.com/blog/assets/images/home_scripts_properties.png"&gt;&lt;/p&gt;
+&lt;p&gt;After downloading the &lt;a href="https://github.com/wrongbaud/ghidra-utils"&gt;&lt;code&gt;ghidra-utils&lt;/code&gt;&lt;/a&gt; repository and copying the &lt;a href="https://github.com/wrongbaud/ghidra-utils/blob/main/GBA/MakeFunctionsScriptGBA.java"&gt;function discovery script&lt;/a&gt; into our project directory, we can now see the script in our Eclipse workspace.&lt;/p&gt;
+&lt;p&gt;Let's take this script and run it on another ROM image from a different game; this time, we will use Monster Rancher Advance as a test case. &lt;/p&gt;
+&lt;p&gt;We can launch this script in Ghidra by right-clicking on the script in the project explorer and clicking&lt;/p&gt;
+&lt;p&gt;&lt;code&gt;Run As&lt;/code&gt; &amp;gt; &lt;code&gt;Ghidra&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Run as &amp;gt; Ghidra" src="https://voidstarsec.com/blog/assets/images/run_as_ghidra.png"&gt;&lt;/p&gt;
+&lt;p&gt;This will cause the previously linked  Ghidra installation to launch. Once it launches, we will select our target binary and then open up the &lt;code&gt;Script Manager&lt;/code&gt; window by clicking &lt;code&gt;Window&lt;/code&gt; &amp;gt; &lt;code&gt;Script Manager&lt;/code&gt; displaying the following:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Script Manager" src="https://voidstarsec.com/blog/assets/images/script_manager.png"&gt;&lt;/p&gt;
+&lt;p&gt;We can locate our script by typing it into the search bar; we can double click it to launch it on our new unanalyzed ROM. Below are the parameters I ran the script with; we will run it over the entire ROM and denote the results. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="Plugin Option 1" src="https://voidstarsec.com/blog/assets/images/plugin_1.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Plugin Option 2" src="https://voidstarsec.com/blog/assets/images/plugin_2.png"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Plugin Option 3" src="https://voidstarsec.com/blog/assets/images/plugin_3.png"&gt;&lt;/p&gt;
+&lt;p&gt;After entering the third option, the script will run and look for functions in the ROM image. For this example, the script was able to identify 240 functions.&lt;/p&gt;
+&lt;p&gt;If we wanted to modify or debug this script as it is running, we can now easily do that within Eclipse. &lt;/p&gt;
+&lt;p&gt;Let's say we wanted to break after the user inputs the number of memory regions they wish to analyze. To do this, we can go to the relevant line in our script and set a breakpoint by double-clicking the line number. We also will need to relaunch Ghidra using the &lt;code&gt;Debug As&lt;/code&gt; option in the project manager. &lt;/p&gt;
+&lt;p&gt;&lt;img alt="Set a Breakpoint" src="https://voidstarsec.com/blog/assets/images/breakpoint.png"&gt;&lt;/p&gt;
+&lt;p&gt;When we launch Ghidra in debugging mode, Eclipse will appear as follows:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Debugging Mode" src="https://voidstarsec.com/blog/assets/images/breakpoints_debugging.png"&gt;&lt;/p&gt;
+&lt;p&gt;Now, if we rerun the script from Ghidra, the following will occur:&lt;/p&gt;
+&lt;p&gt;&lt;img alt="Ghidra Halted" src="https://voidstarsec.com/blog/assets/images/halted.png"&gt;&lt;/p&gt;
+&lt;p&gt;We can see that our breakpoint hit, allowing us to single-step through our script. In addition, debugger integration helps debug our scripts and step through other scripts to help us understand how they work. &lt;/p&gt;
+&lt;p&gt;Using the GhidraDev plugin, we can set breakpoints, log more information, and run our script in Ghidra. &lt;/p&gt;
+&lt;h1&gt;Conclusion&lt;/h1&gt;
+&lt;p&gt;With this post, we have reviewed how to:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Build the latest version of Ghidra using docker&lt;/li&gt;
+&lt;li&gt;Set up an Eclipse development environment for extending Ghidra&lt;/li&gt;
+&lt;li&gt;Build and install the GhidraDev plugin&lt;/li&gt;
+&lt;li&gt;Load a Ghidra script into an existing project and debug it using Eclipse&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;With this, we now have all the tools in place needed to extend and augment Ghidra. For some examples of what can be done through Ghidra scripting, check out the following posts:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="https://wrongbaud.github.io/posts/writing-a-ghidra-loader/"&gt;Ghidra Loader&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="https://wrongbaud.github.io/posts/kong-vs-ghidra/"&gt;PCode Emulation&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;If you would like to learn more about Ghidra, check out &lt;a href="https://wrongbaud.github.io/posts/ghidra-training/"&gt;this course&lt;/a&gt; that I authored at hackaday.
+- &lt;a href="https://github.com/wrongbaud/hackaday-u"&gt;Github Repository&lt;/a&gt;
+- &lt;a href="https://www.youtube.com/watch?v=d4Pgi5XML8E"&gt;YouTube Playlist&lt;/a&gt;
+- &lt;a href="https://hackaday.io/course/172292-introduction-to-reverse-engineering-with-ghidra"&gt;Hackaday Page&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;As always, if you have any questions about this post or would like to submit any corrections or steps that I have missed, please feel free to reach out to me via &lt;a href="https://twitter.com/wrongbaud"&gt;Twitter&lt;/a&gt; or &lt;a href="mailto:contact@voidstarsec.com"&gt;email&lt;/a&gt; and let me know!&lt;/p&gt;
+&lt;h1&gt;Patches / References&lt;/h1&gt;
+&lt;ul&gt;
+&lt;li&gt;Patches for Ghidra builder&lt;/li&gt;
+&lt;/ul&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span&gt;&lt;/span&gt;&lt;code&gt;dev@ubuntu:~/tools/ghidra/ghidra-builder$&lt;span class="w"&gt; &lt;/span&gt;git&lt;span class="w"&gt; &lt;/span&gt;diff&lt;span class="w"&gt; &lt;/span&gt;docker-tpl/Dockerfile
+diff&lt;span class="w"&gt; &lt;/span&gt;--git&lt;span class="w"&gt; &lt;/span&gt;a/docker-tpl/Dockerfile&lt;span class="w"&gt; &lt;/span&gt;b/docker-tpl/Dockerfile
+index&lt;span class="w"&gt; &lt;/span&gt;6391c29..9ccf7fa&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="m"&gt;100644&lt;/span&gt;
+---&lt;span class="w"&gt; &lt;/span&gt;a/docker-tpl/Dockerfile
++++&lt;span class="w"&gt; &lt;/span&gt;b/docker-tpl/Dockerfile
+@@&lt;span class="w"&gt; &lt;/span&gt;-33,10&lt;span class="w"&gt; &lt;/span&gt;+33,10&lt;span class="w"&gt; &lt;/span&gt;@@&lt;span class="w"&gt; &lt;/span&gt;USER&lt;span class="w"&gt; &lt;/span&gt;dockerbot
+&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="c1"&gt;# Build tools are part of the builder image; project code is mounted&lt;/span&gt;
+&lt;span class="w"&gt; &lt;/span&gt;RUN&lt;span class="w"&gt; &lt;/span&gt;mkdir&lt;span class="w"&gt; &lt;/span&gt;-p&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$HOME&lt;/span&gt;/.gradle/init.d/
+
+-RUN&lt;span class="w"&gt; &lt;/span&gt;wget&lt;span class="w"&gt; &lt;/span&gt;https://services.gradle.org/distributions/gradle-6.0-bin.zip&lt;span class="w"&gt; &lt;/span&gt;-P&lt;span class="w"&gt; &lt;/span&gt;/tmp
++RUN&lt;span class="w"&gt; &lt;/span&gt;wget&lt;span class="w"&gt; &lt;/span&gt;https://services.gradle.org/distributions/gradle-7.3-bin.zip&lt;span class="w"&gt; &lt;/span&gt;-P&lt;span class="w"&gt; &lt;/span&gt;/tmp
+&lt;span class="w"&gt; &lt;/span&gt;RUN&lt;span class="w"&gt; &lt;/span&gt;unzip&lt;span class="w"&gt; &lt;/span&gt;-d&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;$HOME&lt;/span&gt;/gradle&lt;span class="w"&gt; &lt;/span&gt;/tmp/gradle-*.zip
+
+-ENV&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;GRADLE_HOME&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;/home/dockerbot/gradle/gradle-6.0
++ENV&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;GRADLE_HOME&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;/home/dockerbot/gradle/gradle-7.3
+&lt;span class="w"&gt; &lt;/span&gt;ENV&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nv"&gt;PATH&lt;/span&gt;&lt;span class="o"&gt;=&lt;/span&gt;&lt;span class="nv"&gt;$GRADLE_HOME&lt;/span&gt;/bin:&lt;span class="nv"&gt;$PATH&lt;/span&gt;
+
+&lt;span class="w"&gt; &lt;/span&gt;RUN&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nb"&gt;echo&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="s2"&gt;&amp;quot;\&lt;/span&gt;
+&lt;span class="s2"&gt;dev@ubuntu:~/tools/ghidra/ghidra-builder&lt;/span&gt;$&lt;span class="s2"&gt; git diff workdir/build_ghidra.sh&lt;/span&gt;
+&lt;span class="s2"&gt;diff --git a/workdir/build_ghidra.sh b/workdir/build_ghidra.sh&lt;/span&gt;
+&lt;span class="s2"&gt;index 50d350d..dbe9494 100755&lt;/span&gt;
+&lt;span class="s2"&gt;--- a/workdir/build_ghidra.sh&lt;/span&gt;
+&lt;span class="s2"&gt;+++ b/workdir/build_ghidra.sh&lt;/span&gt;
+&lt;span class="s2"&gt;@@ -17,7 +17,8 @@ cd &lt;/span&gt;&lt;span class="nv"&gt;$START_DIR&lt;/span&gt;&lt;span class="s2"&gt;/ghidra&lt;/span&gt;
+&lt;span class="s2"&gt; gradle --init-script gradle/support/fetchDependencies.gradle init&lt;/span&gt;
+&lt;span class="s2"&gt; gradle yajswDevUnpack&lt;/span&gt;
+&lt;span class="s2"&gt; gradle buildGhidra&lt;/span&gt;
+&lt;span class="s2"&gt;-&lt;/span&gt;
+&lt;span class="s2"&gt;+gradle prepDev&lt;/span&gt;
+&lt;span class="s2"&gt;+gradle eclipse -PeclipsePDE&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content><category term="Ghidra"></category><category term="ghidra"></category><category term="tutorial"></category></entry></feed>
