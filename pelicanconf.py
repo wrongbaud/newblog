@@ -1,6 +1,6 @@
 AUTHOR = 'VoidStar Security'
 SITENAME = 'VoidStar Security Blog'
-SITEURL = ''
+SITEURL = 'https://wrongbaud.github.io/newblog'
 PLUGIN_PATHS = ['/home/wrongbaud/projects/vss/blog-resources/pelican-plugins', ]
 PLUGINS = ['i18n_subsites','pelican_just_table','tag_cloud']
 JINJA_ENVIRONMENT = {
