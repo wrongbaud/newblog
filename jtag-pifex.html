@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" prefix="og: http://ogp.me/ns# fb: https://www.facebook.com/2008/fbml">
 <head>
-    <title>"JTAG Hacking with a Raspberry Pi - Introducing the PiFex" - VoidStar Security Blog</title>
+    <title>JTAG Hacking with a Raspberry Pi - Introducing the PiFex - VoidStar Security Blog</title>
     <!-- Using the latest rendering mode for IE -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta charset="utf-8">
@@ -9,7 +9,7 @@
 
 
 
-<link rel="canonical" href="/jtag-pifex.html">
+<link rel="canonical" href="https://wrongbaud.github.io/newblog/jtag-pifex.html">
 
         <meta name="author" content=""Matthew Alt"" />
         <meta name="keywords" content="pifex,jtag,hardware,blog" />
@@ -17,11 +17,11 @@
 
         <meta property="og:site_name" content="VoidStar Security Blog" />
         <meta property="og:type" content="article"/>
-        <meta property="og:title" content="&#34;JTAG Hacking with a Raspberry Pi - Introducing the PiFex&#34;"/>
-        <meta property="og:url" content="/jtag-pifex.html"/>
+        <meta property="og:title" content="JTAG Hacking with a Raspberry Pi - Introducing the PiFex"/>
+        <meta property="og:url" content="https://wrongbaud.github.io/newblog/jtag-pifex.html"/>
         <meta property="og:description" content="With this blog post, we&#39;ll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU."/>
         <meta property="article:published_time" content="2024-05-05" />
-            <meta property="article:section" content="Pifex" />
+            <meta property="article:section" content="Hardware" />
             <meta property="article:tag" content="pifex" />
             <meta property="article:tag" content="jtag" />
             <meta property="article:tag" content="hardware" />
@@ -31,17 +31,17 @@
 
 
     <!-- Bootstrap -->
-        <link rel="stylesheet" href="/theme/css/bootstrap.spacelab.min.css" type="text/css"/>
-    <link href="/theme/css/font-awesome.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="https://wrongbaud.github.io/newblog/theme/css/bootstrap.spacelab.min.css" type="text/css"/>
+    <link href="https://wrongbaud.github.io/newblog/theme/css/font-awesome.min.css" rel="stylesheet">
 
-    <link href="/theme/css/pygments/native.css" rel="stylesheet">
-    <link rel="stylesheet" href="/theme/css/style.css" type="text/css"/>
+    <link href="https://wrongbaud.github.io/newblog/theme/css/pygments/native.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://wrongbaud.github.io/newblog/theme/css/style.css" type="text/css"/>
 
-        <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate"
+        <link href="https://wrongbaud.github.io/newblog/feeds/all.atom.xml" type="application/atom+xml" rel="alternate"
               title="VoidStar Security Blog ATOM Feed"/>
 
-        <link href="/feeds/pifex.atom.xml" type="application/atom+xml" rel="alternate"
-              title="VoidStar Security Blog Pifex ATOM Feed"/>
+        <link href="https://wrongbaud.github.io/newblog/feeds/hardware.atom.xml" type="application/atom+xml" rel="alternate"
+              title="VoidStar Security Blog Hardware ATOM Feed"/>
 
 </head>
 <body>
@@ -49,13 +49,14 @@
 <div class="navbar navbar-default navbar-fixed-top" role="navigation">
     <div class="container">
         <div class="navbar-header">
-            <a href="/" class="navbar-brand">
+            <a href="https://wrongbaud.github.io/newblog/" class="navbar-brand">
 VoidStar Security Blog            </a>
         </div>
         <div class="collapse navbar-collapse navbar-ex1-collapse">
             <ul class="nav navbar-nav">
             </ul>
             <ul class="nav navbar-nav navbar-right">
+              <li><a href="https://wrongbaud.github.io/newblog/archives.html"><i class="fa fa-th-list"></i><span class="icon-label">Archives</span></a></li>
             </ul>
         </div>
         <!-- /.navbar-collapse -->
@@ -73,10 +74,10 @@ VoidStar Security Blog            </a>
         <article>
             <header class="page-header">
                 <h1>
-                    <a href="/jtag-pifex.html"
+                    <a href="https://wrongbaud.github.io/newblog/jtag-pifex.html"
                        rel="bookmark"
-                       title="Permalink to "JTAG Hacking with a Raspberry Pi - Introducing the PiFex"">
-                        "JTAG Hacking with a Raspberry Pi - Introducing the PiFex"
+                       title="Permalink to JTAG Hacking with a Raspberry Pi - Introducing the PiFex">
+                        JTAG Hacking with a Raspberry Pi - Introducing the PiFex
                     </a>
                 </h1>
             </header>
@@ -91,24 +92,28 @@ VoidStar Security Blog            </a>
 
 
             <span class="label label-default">By</span>
-            <a href="/author/matthew-alt.html"><i class="fa fa-user"></i> "Matthew Alt"</a>
+            <a href="https://wrongbaud.github.io/newblog/author/matthew-alt.html"><i class="fa fa-user"></i> "Matthew Alt"</a>
 
         <span class="label label-default">Category</span>
-        <a href="/category/pifex.html">Pifex</a>
+        <a href="https://wrongbaud.github.io/newblog/category/hardware.html">Hardware</a>
 
 
 <span class="label label-default">Tags</span>
-	<a href="/tag/pifex.html">pifex</a>
+	<a href="https://wrongbaud.github.io/newblog/tag/pifex.html">pifex</a>
         /
-	<a href="/tag/jtag.html">jtag</a>
+	<a href="https://wrongbaud.github.io/newblog/tag/jtag.html">jtag</a>
         /
-	<a href="/tag/hardware.html">hardware</a>
+	<a href="https://wrongbaud.github.io/newblog/tag/hardware.html">hardware</a>
         /
-	<a href="/tag/blog.html">blog</a>
+	<a href="https://wrongbaud.github.io/newblog/tag/blog.html">blog</a>
     
 </footer><!-- /.post-info -->                    </div>
                 </div>
-                <h1>Overview</h1>
+                <div style="width:290px">property</div>
+<p>| description                           |
+| --------------------------------------- | ------------------------------------- |
+| <code>border-bottom-right-radius</code>            | Defines the shape of the bottom-right |</p>
+<h1>Overview</h1>
 <p>When performing initial hardware analysis and recon, I have become very fond of using Armbian-based single-board computers (SBCs) for things like UART, SPI, I2C, JTAG, and SWD. One of the main benefits of using one of these boards is that since the peripherals we are interested in are exposed as character devices in Linux, a wide variety of tools are available for interfacing with them, including most programming and scripting languages. </p>
 <p>However, one of the biggest hurdles that stop people from using an Armbian-based device is the initial setup and configuration (not to mention availability!). It takes more time to configure an Orange Pi or Raspberry Pi and enable the various interfaces than plug in an FTDI to your Linux machine. This blog post will help break down some of those barriers and streamline the setup process for those looking to learn hardware hacking with a Linux SBC.</p>
 <p>With this blog post, we'll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU.</p>
@@ -735,39 +740,36 @@ make
 <section class="well well-sm">
   <ul class="list-group list-group-flush">
 
-<!-- Sidebar/Social -->
-<li class="list-group-item">
-  <h4><i class="fa fa-home fa-lg"></i><span class="icon-label">Social</span></h4>
-  <ul class="list-group" id="social">
-    <li class="list-group-item"><a href="http://twitter.com/voidstarsec"><i class="fa fa-twitter-square fa-lg"></i> twitter</a></li>
-    <li class="list-group-item"><a href="http://www.linkedin.com/in/voidstarsec"><i class="fa fa-linkedin-square fa-lg"></i> linkedin</a></li>
-    <li class="list-group-item"><a href="http://github.com/voidstarsec"><i class="fa fa-github-square fa-lg"></i> github</a></li>
-  </ul>
-</li>
-<!-- End Sidebar/Social -->
-
 <!-- Sidebar/Categories -->
 <li class="list-group-item">
   <h4><i class="fa fa-home fa-lg"></i><span class="icon-label">Categories</span></h4>
   <ul class="list-group" id="categories">
     <li class="list-group-item">
-      <a href="/category/blog.html"><i class="fa fa-folder-open fa-lg"></i>blog</a>
+      <a href="https://wrongbaud.github.io/newblog/category/ghidra.html"><i class="fa fa-folder-open fa-lg"></i>Ghidra</a>
     </li>
     <li class="list-group-item">
-      <a href="/category/ghidra.html"><i class="fa fa-folder-open fa-lg"></i>Ghidra</a>
+      <a href="https://wrongbaud.github.io/newblog/category/glitching.html"><i class="fa fa-folder-open fa-lg"></i>Glitching</a>
     </li>
     <li class="list-group-item">
-      <a href="/category/glitching.html"><i class="fa fa-folder-open fa-lg"></i>Glitching</a>
+      <a href="https://wrongbaud.github.io/newblog/category/hardware.html"><i class="fa fa-folder-open fa-lg"></i>Hardware</a>
     </li>
     <li class="list-group-item">
-      <a href="/category/pifex.html"><i class="fa fa-folder-open fa-lg"></i>Pifex</a>
-    </li>
-    <li class="list-group-item">
-      <a href="/category/training.html"><i class="fa fa-folder-open fa-lg"></i>training</a>
+      <a href="https://wrongbaud.github.io/newblog/category/training.html"><i class="fa fa-folder-open fa-lg"></i>Training</a>
     </li>
   </ul>
 </li>
 <!-- End Sidebar/Categories -->
+
+<!-- Sidebar/Social -->
+<li class="list-group-item">
+  <h4><i class="fa fa-home fa-lg"></i><span class="icon-label">Social</span></h4>
+  <ul class="list-group" id="social">
+    <li class="list-group-item"><a href="https://twitter.com/voidstarsec"><i class="fa fa-twitter-square fa-lg"></i> twitter</a></li>
+    <li class="list-group-item"><a href="https://www.linkedin.com/in/voidstarsec"><i class="fa fa-linkedin-square fa-lg"></i> linkedin</a></li>
+    <li class="list-group-item"><a href="https://github.com/voidstarsec"><i class="fa fa-github-square fa-lg"></i> github</a></li>
+  </ul>
+</li>
+<!-- End Sidebar/Social -->
 
 <!-- Sidebar/Links -->
 <li class="list-group-item">
@@ -811,13 +813,13 @@ make
       </div>
    </div>
 </footer>
-<script src="/theme/js/jquery.min.js"></script>
+<script src="https://wrongbaud.github.io/newblog/theme/js/jquery.min.js"></script>
 
 <!-- Include all compiled plugins (below), or include individual files as needed -->
-<script src="/theme/js/bootstrap.min.js"></script>
+<script src="https://wrongbaud.github.io/newblog/theme/js/bootstrap.min.js"></script>
 
 <!-- Enable responsive features in IE8 with Respond.js (https://github.com/scottjehl/Respond) -->
-<script src="/theme/js/respond.min.js"></script>
+<script src="https://wrongbaud.github.io/newblog/theme/js/respond.min.js"></script>
 
 
 
