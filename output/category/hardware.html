@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" prefix="og: http://ogp.me/ns# fb: https://www.facebook.com/2008/fbml">
 <head>
-    <title>tools - VoidStar Security Blog</title>
+    <title>Hardware - VoidStar Security Blog</title>
     <!-- Using the latest rendering mode for IE -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta charset="utf-8">
@@ -11,7 +11,7 @@
 
 
     <meta name="author" content="VoidStar Security" />
-    <meta name="keywords" content="tools" />
+    <meta name="keywords" content="Hardware" />
 
     <!-- Open Graph tags -->
         <meta property="og:site_name" content="VoidStar Security Blog" />
@@ -32,7 +32,8 @@
         <link href="/feeds/all.atom.xml" type="application/atom+xml" rel="alternate"
               title="VoidStar Security Blog ATOM Feed"/>
 
-
+        <link href="/feeds/hardware.atom.xml" type="application/atom+xml" rel="alternate"
+              title="VoidStar Security Blog Hardware ATOM Feed"/>
 
 </head>
 <body>
@@ -61,12 +62,12 @@ VoidStar Security Blog            </a>
     <div class="row">
         <div class="col-sm-9 col-sm-push-3">
             <article>
-                <h2><a href="/2023-year-in-review.html">VoidStar Security - 2023 Year In Review</a></h2>
+                <h2><a href="/jtag-pifex.html">JTAG Hacking with a Raspberry Pi - Introducing the PiFex</a></h2>
                     <div class="well well-sm">
 <footer class="post-info">
     <span class="label label-default">Date</span>
     <span class="published">
-        <i class="fa fa-calendar"></i><time datetime="2023-12-29T00:00:00-07:00"> Fri 29 December 2023</time>
+        <i class="fa fa-calendar"></i><time datetime="2024-05-05T00:00:00-06:00"> Sun 05 May 2024</time>
     </span>
 
 
@@ -74,19 +75,109 @@ VoidStar Security Blog            </a>
             <a href="/author/matthew-alt.html"><i class="fa fa-user"></i> "Matthew Alt"</a>
 
         <span class="label label-default">Category</span>
-        <a href="/category/training.html">Training</a>
+        <a href="/category/hardware.html">Hardware</a>
+
+
+<span class="label label-default">Tags</span>
+	<a href="/tag/pifex.html">pifex</a>
+        /
+	<a href="/tag/jtag.html">jtag</a>
+        /
+	<a href="/tag/hardware.html">hardware</a>
+        /
+	<a href="/tag/blog.html">blog</a>
+    
+</footer><!-- /.post-info -->                    </div>
+                <div class="summary"><p>With this blog post, we'll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU.</p>
+                    <a class="btn btn-default btn-xs" href="/jtag-pifex.html">more ...</a>
+                </div>
+            </article>
+            <hr/>
+            <article>
+                <h2><a href="/how-to-build-a-hardware-hacking-lab-a-beginners-guide.html">How to Build a Hardware Hacking Lab - A Beginners Guide</a></h2>
+                    <div class="well well-sm">
+<footer class="post-info">
+    <span class="label label-default">Date</span>
+    <span class="published">
+        <i class="fa fa-calendar"></i><time datetime="2023-10-17T00:00:00-06:00"> Tue 17 October 2023</time>
+    </span>
+
+
+            <span class="label label-default">By</span>
+            <a href="/author/voidstar-security.html"><i class="fa fa-user"></i> VoidStar Security</a>
+
+        <span class="label label-default">Category</span>
+        <a href="/category/hardware.html">Hardware</a>
+
+
+    
+</footer><!-- /.post-info -->                    </div>
+                <div class="summary"><p>One of the most common questions that I get during a training is:</p>
+<blockquote>
+<p>“What do we need to build out an initial hardware hacking lab?”</p>
+</blockquote>
+<p>Of course, the answer to this question can be heavily tailored based on the goals of the team and their targets, but I wanted to …</p>
+                    <a class="btn btn-default btn-xs" href="/how-to-build-a-hardware-hacking-lab-a-beginners-guide.html">more ...</a>
+                </div>
+            </article>
+            <hr/>
+            <article>
+                <h2><a href="/uart-uboot-and-usb.html">Intro to Embedded RE: UART Discovery and Firmware Extraction via UBoot</a></h2>
+                    <div class="well well-sm">
+<footer class="post-info">
+    <span class="label label-default">Date</span>
+    <span class="published">
+        <i class="fa fa-calendar"></i><time datetime="2022-01-27T00:00:00-07:00"> Thu 27 January 2022</time>
+    </span>
+
+
+            <span class="label label-default">By</span>
+            <a href="/author/matthew-alt.html"><i class="fa fa-user"></i> "Matthew Alt"</a>
+
+        <span class="label label-default">Category</span>
+        <a href="/category/hardware.html">Hardware</a>
 
 
 <span class="label label-default">Tags</span>
 	<a href="/tag/hardware.html">hardware</a>
         /
-	<a href="/tag/blog.html">blog</a>
+	<a href="/tag/uart.html">uart</a>
         /
-	<a href="/tag/tools.html">tools</a>
+	<a href="/tag/uboot.html">uboot</a>
     
 </footer><!-- /.post-info -->                    </div>
-                <div class="summary"><p>As we reach the end of the year, I want to thank everyone for their continued support and business. 2023 was a great year for training and consulting. We worked with companies ranging from 4000 to 15 members, all of which brought unique perspectives to our course material and allowed us to expand on new topics and targets. A big thanks to all those who reached out for onsite training in 2023 and those who contracted with us!</p>
-                    <a class="btn btn-default btn-xs" href="/2023-year-in-review.html">more ...</a>
+                <div class="summary"><p>This blog entry aims to familiarize readers with locating an active UART on a target system, how to approach a UBoot console, and ultimately how to leverage both of these components to extract the flash memory from our target. After reading this, readers will be familiar with the screen utility the depthcharge python3 libraries.</p>
+                    <a class="btn btn-default btn-xs" href="/uart-uboot-and-usb.html">more ...</a>
+                </div>
+            </article>
+            <hr/>
+            <article>
+                <h2><a href="/intro-to-embedded-part-1.html">Intro to Embedded RE Part 1: Tools and Series Overview</a></h2>
+                    <div class="well well-sm">
+<footer class="post-info">
+    <span class="label label-default">Date</span>
+    <span class="published">
+        <i class="fa fa-calendar"></i><time datetime="2022-01-17T00:00:00-07:00"> Mon 17 January 2022</time>
+    </span>
+
+
+            <span class="label label-default">By</span>
+            <a href="/author/matthew-alt.html"><i class="fa fa-user"></i> "Matthew Alt"</a>
+
+        <span class="label label-default">Category</span>
+        <a href="/category/hardware.html">Hardware</a>
+
+
+<span class="label label-default">Tags</span>
+	<a href="/tag/hardware.html">hardware</a>
+        /
+	<a href="/tag/uart.html">uart</a>
+        /
+	<a href="/tag/uboot.html">uboot</a>
+    
+</footer><!-- /.post-info -->                    </div>
+                <div class="summary"><p>This post reviews some of the tools needed when setting up a lab for reverse engineering embedded systems. There will be two sections, one for hardware tools and one for software tools. After reading this blog post, the reader should know what is needed to set up an introductory lab for reverse engineering embedded systems and firmware images.</p>
+                    <a class="btn btn-default btn-xs" href="/intro-to-embedded-part-1.html">more ...</a>
                 </div>
             </article>
             <hr/>
@@ -163,7 +254,7 @@ VoidStar Security Blog            </a>
    <div class="container">
       <hr>
       <div class="row">
-         <div class="col-xs-10">&copy; 2023 VoidStar Security
+         <div class="col-xs-10">&copy; 2024 VoidStar Security
             &middot; Powered by <a href="https://github.com/getpelican/pelican-themes/tree/master/pelican-bootstrap3" target="_blank">pelican-bootstrap3</a>,
             <a href="http://docs.getpelican.com/" target="_blank">Pelican</a>,
             <a href="http://getbootstrap.com" target="_blank">Bootstrap</a>         </div>

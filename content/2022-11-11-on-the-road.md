@@ -1,10 +1,11 @@
 ---
 layout: post
-title: "On the Road at the Leahy Center: Our first in-person training of 2022!"
+title: On the Road at the Leahy Center: Our first in-person training of 2022!
 description: Description of the on-site course at Leahy Center
 summary: Description of the on-site course at Leahy Center
-category: training
+category: Training
 tags: training,blog
+slug: on-the-road
 ---
 
 May of this year marked the first in-person training of 2023. This training took place at the [Leahy Center for Digital Forensics and Cybersecurity.](https://www.champlain.edu/cybersecurity-and-digital-forensics/senator-patrick-leahy-center-for-digital-forensics-and-cybersecurity). The training was given to the IoT analysis team at the Leahy center, to improve the students' skills working in the field of IoT device analysis and research. In mid-May, I packed up and drove up to beautiful Burlington, Vermont, to spend a week with students hacking hardware.

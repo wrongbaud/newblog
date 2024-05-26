@@ -1,10 +1,12 @@
 ---
 layout: post
-title: "Replicant: Reproducing a Fault Injection Attack on the Trezor One"
+title: Replicant: Reproducing a Fault Injection Attack on the Trezor One
 description: Introduction to Fault Injection Attacks
 summary:  This post aims to provide a road map and example of how to replicate a fault injection attack and the hurdles and shortcomings that can occur when attempting to do so. Furthermore, by outlining the process of replicating one of these attacks, we hope that readers come away from this post more confident in generating their own fault injection attacks or replicating pre-existing work.
 category: Glitching
 tags: fault-injection,chipwhisperer
+author: "Matthew Alt"
+slug: replicant-part-1
 ---
 
 # Overview

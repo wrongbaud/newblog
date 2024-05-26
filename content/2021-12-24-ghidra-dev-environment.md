@@ -1,11 +1,12 @@
 ---
 layout: post
-title: "Extending Ghidra Part 1: Setting up a Development Environment"
+title: Extending Ghidra Part 1: Setting up a Development Environment
 description: Instructions on how to set up a build Ghidra and set up a development environment
 summary: With this post, I hope to explain how to set up a development environment for the latest Ghidra release on Ubuntu 20.04. After following the steps outlined below, we will have the ability to write, debug and export custom Ghidra plugins, modules, and scripts. 
 tags: ghidra,tutorial
 author: "Matthew Alt"
 category: Ghidra
+slug: ghidra-dev-environment
 ---
 
 # Extending Ghidra Part 1: Setting up a Development Environment

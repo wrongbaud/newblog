@@ -1,21 +1,18 @@
 AUTHOR = 'VoidStar Security'
 SITENAME = 'VoidStar Security Blog'
-SITEURL = 'https://wrongbaud.github.io/newblog'
-PLUGIN_PATHS = ['/home/wrongbaud/projects/vss/blog-resources/pelican-plugins', ]
-PLUGINS = ['i18n_subsites','pelican_just_table','tag_cloud']
+SITEURL = ''
+PLUGIN_PATHS = ['/home/wrongbaud/projects/vss/blog-resources/pelican-plugins']
+PLUGINS = ['i18n_subsites','pelican_just_table','tag_cloud','redirect_url']
 JINJA_ENVIRONMENT = {
             'extensions': ['jinja2.ext.i18n'],
             }
 
 PATH = 'content'
-
 TIMEZONE = 'America/Boise'
-
 DEFAULT_LANG = 'en'
-
-# Feed generation is usually not desired when developing
-
+TAG_CLOUD_MAX_ITEMS=10
 SIDEBAR_ON_LEFT=True
+
 # Blogroll
 LINKS = (('VoidStar Security Website', 'https://voidstarsec.com/'),
          ('VoidStar Security Training', 'https://www.voidstarsec.training/'),
@@ -24,12 +21,15 @@ LINKS = (('VoidStar Security Website', 'https://voidstarsec.com/'),
          ('Wrongbauds Blog (fun intro hacks)', 'https://www.wrongbaud.github.io/'),)
 
 # Social widget
-SOCIAL = (('twitter', 'http://twitter.com/voidstarsec'),
-          ('linkedin', 'http://www.linkedin.com/in/voidstarsec'),
-          ('github', 'http://github.com/voidstarsec'),)
+SOCIAL = (('twitter', 'https://twitter.com/voidstarsec'),
+          ('linkedin', 'https://www.linkedin.com/in/voidstarsec'),
+          ('github', 'https://github.com/voidstarsec'),)
 
-# Uncomment following line if you want document-relative URLs when developing
+
+DEFAULT_PAGINATION=10
 DISPLAY_CATEGORIES_ON_MENU=False
+DISPLAY_TAGS_INLINE=True
+TAGS_URL='tags.html'
 DISPLAY_TAGS_ON_SIDEBAR=True
 DISPLAY_CATEGORIES_ON_SIDEBAR=True
 DISPLAY_ARTICLE_INFO_ON_INDEX=True

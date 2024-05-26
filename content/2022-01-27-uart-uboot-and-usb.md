@@ -1,10 +1,12 @@
 ---
 layout: post
-title: "Intro to Embedded RE: UART Discovery and Firmware Extraction via UBoot "
+title: Intro to Embedded RE: UART Discovery and Firmware Extraction via UBoot
 description: Extracting firmware via UART and UBoot
 summary:  This blog entry aims to familiarize readers with locating an active UART on a target system, how to approach a UBoot console, and ultimately how to leverage both of these components to extract the flash memory from our target. After reading this, readers will be familiar with the screen utility the depthcharge python3 libraries.
 tags: hardware,uart,uboot
-category: blog
+category: Hardware
+author: "Matthew Alt"
+slug: uart-uboot-and-usb
 ---
 
 

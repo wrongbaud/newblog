@@ -1,13 +1,18 @@
 ---
 layout: post
-title: "JTAG Hacking with a Raspberry Pi - Introducing the PiFex"
+title: JTAG Hacking with a Raspberry Pi - Introducing the PiFex
 description: JTAG for Reverse Engineers
 summary: With this blog post, we'll introduce the PiFex, a basic companion board for the Raspberry Pi designed to teach users the basics of hardware hacking and embedded protocols. We will then demonstrate how to use the PiFex to access a JTAG tap on an undocumented SSD, allowing memory reads and GDB access to the SSD CPU.
 tags: pifex,jtag,hardware,blog
 author: "Matthew Alt"
 slug: jtag-pifex
-category: Pifex
+category: Hardware
 ---
+
+ <div style="width:290px">property</div> | description                           |
+| --------------------------------------- | ------------------------------------- |
+| `border-bottom-right-radius`            | Defines the shape of the bottom-right |
+
 
 # Overview
 

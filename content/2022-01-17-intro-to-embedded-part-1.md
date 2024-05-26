@@ -1,10 +1,12 @@
 ---
 layout: post
-title: "Intro to Embedded RE Part 1: Tools and Series Overview"
+title: Intro to Embedded RE Part 1: Tools and Series Overview
 description: Tools required to set up an embedded reverse engineering lab
 summary:  This post reviews some of the tools needed when setting up a lab for reverse engineering embedded systems. There will be two sections, one for hardware tools and one for software tools. After reading this blog post, the reader should know what is needed to set up an introductory lab for reverse engineering embedded systems and firmware images.
-category: blog
+category: Hardware
 tags: hardware,uart,uboot
+author: "Matthew Alt"
+slug: intro-to-embedded-part-1
 ---
 
 # Tools and Series Overview
