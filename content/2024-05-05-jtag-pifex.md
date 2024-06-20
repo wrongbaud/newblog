@@ -9,78 +9,6 @@ slug: jtag-pifex
 category: Pifex
 ---
 
-<table class="table table-hover">
-  <thead>
-    <tr>
-      <th scope="col">Type</th>
-      <th scope="col">Column heading</th>
-      <th scope="col">Column heading</th>
-      <th scope="col">Column heading</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr class="table-active">
-      <th scope="row">Active</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr>
-      <th scope="row">Default</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-primary">
-      <th scope="row">Primary</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-secondary">
-      <th scope="row">Secondary</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-success">
-      <th scope="row">Success</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-danger">
-      <th scope="row">Danger</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-warning">
-      <th scope="row">Warning</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-info">
-      <th scope="row">Info</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-light">
-      <th scope="row">Light</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-    <tr class="table-dark">
-      <th scope="row">Dark</th>
-      <td>Column content</td>
-      <td>Column content</td>
-      <td>Column content</td>
-    </tr>
-  </tbody>
-</table>
 
 # Overview
 
@@ -102,13 +30,13 @@ The Pi Interface Explorer or PiFex, is a simple hat for a Raspberry Pi designed 
 
 The PCB is well documented, and the IO pins are all labeled as shown in the image below:
 
-![Pifex Overview](https://voidstarsec.com/blog/assets/images/jtag-pifex/pifex.JPG)
+
+<img src= "https://voidstarsec.com/blog/assets/images/jtag-pifex/pifex.JPG" alt="your-image-description" style="border: 8px solid black;" class="center">
 
 We also have added an I2C OLED screen, which you can customize using the Adafruit CircuitPython libraries:
 
-![](https://voidstarsec.com/blog/assets/)
-
 ![JTAG ID Clipped ](https://voidstarsec.com/blog/assets/images/jtag-pifex/jtag_id_clipped.jpg)
+
 # PiFex: Hardware
 
 The PiFex exposes the following interfaces to the end user:

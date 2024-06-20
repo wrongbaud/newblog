@@ -9,9 +9,8 @@
 &lt;h1&gt;PiFex: An Overview&lt;/h1&gt;
 &lt;p&gt;The Pi Interface Explorer or PiFex, is a simple hat for a Raspberry Pi designed for tinkerers and hardware hackers alike. By breaking out the commonly used interfaces and routing them through bi-directional level shifters, we aimed to streamline some of the initial steps when reverse engineering a new device or trying to learn how a new sensor works. While this device was initially designed for use during our &lt;a href="https://voidstarsec.com/hhb.html"&gt;hardware hacking bootcamp&lt;/a&gt; it has quickly become my go-to when performing initial hardware assessments of COTS devices.&lt;/p&gt;
 &lt;p&gt;The PCB is well documented, and the IO pins are all labeled as shown in the image below:&lt;/p&gt;
-&lt;p&gt;&lt;img alt="Pifex Overview" src="https://voidstarsec.com/blog/assets/images/jtag-pifex/pifex.JPG"&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src= "https://voidstarsec.com/blog/assets/images/jtag-pifex/pifex.JPG" alt="your-image-description" style="border: 8px solid black;" class="center"&gt;&lt;/p&gt;
 &lt;p&gt;We also have added an I2C OLED screen, which you can customize using the Adafruit CircuitPython libraries:&lt;/p&gt;
-&lt;p&gt;&lt;img alt="" src="https://voidstarsec.com/blog/assets/"&gt;&lt;/p&gt;
 &lt;p&gt;&lt;img alt="JTAG ID Clipped " src="https://voidstarsec.com/blog/assets/images/jtag-pifex/jtag_id_clipped.jpg"&gt;&lt;/p&gt;
 &lt;h1&gt;PiFex: Hardware&lt;/h1&gt;
 &lt;p&gt;The PiFex exposes the following interfaces to the end user:&lt;/p&gt;

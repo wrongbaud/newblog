@@ -225,7 +225,7 @@ outlined in blue in the image below:</p>
 <hr>
 <h2>Examining Debug Headers</h2>
 <p>When looking at unknown headers like those pointed out in the section above, I usually start by measuring the voltage. We can do this using <a href="https://www.youtube.com/watch?v=TdUK6RPdIrA">our multimeters</a>. To calculate the voltage on these pads, we will set the multimeter to DC measurement mode and probe the locations of interest while holding our black probe on a ground point. The pins measure as follows:</p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th align="center">Pin</th>
@@ -253,7 +253,7 @@ outlined in blue in the image below:</p>
 </table>
 <p>There is no voltage on these lines; while this is disappointing, it is not unexpected. If this were an active UART or another digital signal being transmitted, we would have expected to see some activity in the form of voltage fluctuations. Let's move on to the other three-pin header.</p>
 <p><img alt="UART Connector" src="https://voidstarsec.com/blog/assets/images/uart-colors.png" style="display:block; margin-left:auto; margin-right:auto"></p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th align="center">Pin</th>
@@ -292,7 +292,7 @@ outlined in blue in the image below:</p>
 <h1>UART</h1>
 <p>UART stands for Universal Asynchronous Receiver Transmitter. UART is a two-wire asynchronous serial protocol that allows two devices to communicate. The two lines required for each party are the Transmit (Tx) and receive (Rx) lines. A UART can be used for many things on an embedded system, including communicating with other processors, sensor communications, and debug access. UART is an asynchronous protocol meaning that there is no clock signal required. Instead, both communicating parties are preconfigured to communicate at a certain speed, referred to as the baud rate. The baud rate is measured in bits per second.</p>
 <p>A UART packet/transmission consists of the following fields:</p>
-<table class="table table-striped table-hover">
+<table class="table table-hover">
 <thead>
 <tr>
 <th align="center">Bit Position</th>
